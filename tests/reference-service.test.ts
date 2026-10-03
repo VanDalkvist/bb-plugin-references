@@ -55,6 +55,38 @@ describe("ReferenceService (TDD)", () => {
     assert.equal(fetched?.prompt, "Tilt-shift macro diorama of miniature cozy steampunk tower, 8k");
   });
 
+  test("toggles pinned state and filters by pinned", async () => {
+    const ref1 = await service.add("proj-pin", {
+      urlOrPath: "https://example.com/img1.png",
+      title: "Normal Ref",
+    });
+    const ref2 = await service.add("proj-pin", {
+      urlOrPath: "https://example.com/img2.png",
+      title: "Master Ref",
+      pinned: true,
+    });
+
+    assert.equal(ref1.pinned, false);
+    assert.equal(ref2.pinned, true);
+
+    // Toggle ref1 to true
+    const res1 = await service.togglePin("proj-pin", ref1.id);
+    assert.equal(res1.pinned, true);
+    assert.equal(res1.reference?.pinned, true);
+
+    // Filter pinned
+    const pinnedList = await service.list("proj-pin", { pinned: true });
+    assert.equal(pinnedList.length, 2);
+
+    // Toggle ref2 to false
+    const res2 = await service.togglePin("proj-pin", ref2.id);
+    assert.equal(res2.pinned, false);
+
+    const pinnedListAfter = await service.list("proj-pin", { pinned: true });
+    assert.equal(pinnedListAfter.length, 1);
+    assert.equal(pinnedListAfter[0]?.id, ref1.id);
+  });
+
   test("prevents duplicate references on add (AP-035 Idempotency)", async () => {
     const ref1 = await service.add("proj-1", {
       urlOrPath: "https://example.com/assets/same-image.png",

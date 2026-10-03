@@ -10,18 +10,21 @@ export interface CliResult {
 export type RealtimePublisher = (channel: string, payload: unknown) => void;
 
 export const CLI_USAGE = `Usage:
-  bb references list [--project <id>] [--tag <tag>] [--search <query>] [--json]
-  bb references add <url_or_path> [--title <title>] [--tags <t1,t2>] [--notes <notes>] [--prompt <prompt>] [--source <source>] [--project <id>] [--open] [--json]
+  bb references list [--project <id>] [--tag <tag>] [--pinned] [--search <query>] [--json]
+  bb references add <url_or_path> [--title <title>] [--tags <t1,t2>] [--notes <notes>] [--prompt <prompt>] [--pinned] [--source <source>] [--project <id>] [--open] [--json]
+  bb references pin <id> [--project <id>] [--json]
+  bb references unpin <id> [--project <id>] [--json]
   bb references remove <id> [--project <id>] [--json]
   bb references open [--project <id>] [--id <ref-id>] [--json]
   bb references tags [--project <id>] [--json]
   bb references --help`;
 
 function formatReference(ref: Reference): string {
+  const pinStr = ref.pinned ? " 📌 [Камертон]" : "";
   const tagsStr = ref.tags.length > 0 ? ` [${ref.tags.join(", ")}]` : "";
   const notesStr = ref.notes ? ` — "${ref.notes}"` : "";
   const promptStr = ref.prompt ? ` [prompt: "${ref.prompt}"]` : "";
-  return `• [${ref.id}] ${ref.title}${tagsStr} (${ref.urlOrPath})${notesStr}${promptStr}`;
+  return `• [${ref.id}]${pinStr} ${ref.title}${tagsStr} (${ref.urlOrPath})${notesStr}${promptStr}`;
 }
 
 export async function handleCliCommand(
@@ -32,6 +35,7 @@ export async function handleCliCommand(
 ): Promise<CliResult> {
   const json = argv.includes("--json");
   const openFlag = argv.includes("--open");
+  const pinnedFlag = argv.includes("--pinned");
 
   // Helper to extract option value
   const getOpt = (opt: string): string | undefined => {
@@ -48,7 +52,7 @@ export async function handleCliCommand(
   const cleanArgs: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
-    if (arg === "--json" || arg === "--open") {
+    if (arg === "--json" || arg === "--open" || arg === "--pinned") {
       continue;
     }
     if (
@@ -90,13 +94,17 @@ export async function handleCliCommand(
     case "list": {
       const tag = getOpt("--tag");
       const search = getOpt("--search");
-      const refs = await service.list(projectId, { tag, query: search });
+      const refs = await service.list(projectId, {
+        tag,
+        query: search,
+        pinned: pinnedFlag ? true : undefined,
+      });
 
       if (refs.length === 0) {
         return reply([], `No references found for project "${projectId}".`);
       }
 
-      const text = `Project: ${projectId} (${refs.length} references)\n` +
+      const text = `Project: ${projectId} (${refs.length} references${pinnedFlag ? ", 📌 Камертон" : ""})\n` +
         refs.map(formatReference).join("\n");
       return reply(refs, text);
     }
@@ -120,6 +128,7 @@ export async function handleCliCommand(
         tags,
         notes,
         prompt,
+        pinned: pinnedFlag,
         source,
       });
 
@@ -131,6 +140,52 @@ export async function handleCliCommand(
 
       const text = `Added reference: ${ref.title} [${ref.id}] to project "${projectId}"${openFlag ? " (auto-open panel triggered)" : ""}`;
       return reply(ref, text);
+    }
+
+    case "pin":
+    case "star": {
+      const id = positional[0] || getOpt("--id");
+      if (!id) {
+        return error("Missing reference ID to pin. Usage: bb references pin <id>");
+      }
+
+      const ref = await service.get(projectId, id);
+      if (!ref) {
+        return error(`Reference with ID "${id}" not found.`);
+      }
+
+      if (!ref.pinned) {
+        await service.togglePin(ref.projectId, id);
+        publisher("references-changed", { projectId: ref.projectId });
+      }
+
+      return reply(
+        { pinned: true, id, projectId: ref.projectId },
+        `📌 Reference [${id}] "${ref.title}" pinned as Камертон (На столе).`
+      );
+    }
+
+    case "unpin":
+    case "unstar": {
+      const id = positional[0] || getOpt("--id");
+      if (!id) {
+        return error("Missing reference ID to unpin. Usage: bb references unpin <id>");
+      }
+
+      const ref = await service.get(projectId, id);
+      if (!ref) {
+        return error(`Reference with ID "${id}" not found.`);
+      }
+
+      if (ref.pinned) {
+        await service.togglePin(ref.projectId, id);
+        publisher("references-changed", { projectId: ref.projectId });
+      }
+
+      return reply(
+        { pinned: false, id, projectId: ref.projectId },
+        `Reference [${id}] "${ref.title}" unpinned from Камертон.`
+      );
     }
 
     case "remove": {

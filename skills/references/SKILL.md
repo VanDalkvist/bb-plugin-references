@@ -30,6 +30,13 @@ bb references add "docs/references/hero.png" --title "Steampunk Tower" --prompt 
 # List project references:
 bb references list
 
+# Pin reference to active anchor set ("Камертон" / "На столе"):
+bb references pin <id>
+bb references unpin <id>
+
+# List only pinned "Камертон" references:
+bb references list --pinned
+
 # Filter by tag:
 bb references list --tag ui
 
@@ -46,7 +53,8 @@ bb references list --json
 ## Agent Tool
 
 The plugin registers native agent tools:
-- `references_add({ urlOrPath, title, tags, notes, prompt, open: true })`
+- `references_add({ urlOrPath, title, tags, notes, prompt, pinned, open: true })`
+- `references_pin({ id, pinned })` — pin/unpin reference as the project's active aesthetic anchor ("Камертон" / "На столе")
 - `references_list({ tag, query })`
 
 ### Rule for Generated Images

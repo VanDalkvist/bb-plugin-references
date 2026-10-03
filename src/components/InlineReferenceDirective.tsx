@@ -38,6 +38,7 @@ export function InlineReferenceDirective({ attributes }: PluginMessageDirectiveP
           tags: attributes.tags ? attributes.tags.split(",").map((t) => t.trim()) : [],
           addedAt: new Date().toISOString(),
           notes: attributes.notes?.trim() || null,
+          pinned: false,
           source: "chat",
         });
       }

@@ -94,6 +94,7 @@ export class ReferenceService {
     const tags = this.normalizeTags(rawTags);
 
     const prompt = input.prompt !== undefined ? (input.prompt?.trim() || null) : null;
+    const pinned = input.pinned === true;
 
     const notes =
       input.notes !== undefined
@@ -121,6 +122,7 @@ export class ReferenceService {
         tags: tags.length > 0 ? tags : current.tags,
         notes: notes ?? current.notes,
         prompt: prompt ?? current.prompt ?? null,
+        pinned: input.pinned !== undefined ? (input.pinned ?? false) : current.pinned,
         previewUrl: previewUrl ?? current.previewUrl,
         faviconUrl: faviconUrl ?? current.faviconUrl,
         domain: domain ?? current.domain ?? null,
@@ -144,6 +146,7 @@ export class ReferenceService {
       addedAt: new Date().toISOString(),
       notes,
       prompt,
+      pinned,
       previewUrl,
       faviconUrl,
       domain: domain ?? null,
@@ -171,6 +174,10 @@ export class ReferenceService {
       result = result.filter((ref) => (ref.kind || "image") === filter.kind);
     }
 
+    if (filter?.pinned !== undefined && filter?.pinned !== null) {
+      result = result.filter((ref) => (ref.pinned ?? false) === filter.pinned);
+    }
+
     if (filter?.tag) {
       const targetTag = filter.tag.trim().toLowerCase();
       result = result.filter((ref) =>
@@ -191,6 +198,14 @@ export class ReferenceService {
         return titleMatch || notesMatch || promptMatch || urlMatch || tagMatch || projectMatch || domainMatch;
       });
     }
+
+    // Pinned references ("Камертон" / "На столе") float to the top
+    result.sort((a, b) => {
+      const pinA = a.pinned ? 1 : 0;
+      const pinB = b.pinned ? 1 : 0;
+      if (pinB !== pinA) return pinB - pinA;
+      return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
+    });
 
     // Enrich with human project names
     if (this.projectResolver) {
@@ -265,6 +280,46 @@ export class ReferenceService {
     return true;
   }
 
+  async togglePin(
+    projectId: string,
+    id: string
+  ): Promise<{ reference: Reference | null; pinned: boolean }> {
+    const safeProjectId = (await this.resolveProjectId(projectId)) || "default";
+    const references = await this.storage.getReferences(safeProjectId);
+    const index = references.findIndex((r) => r.id === id);
+
+    if (index !== -1) {
+      const current = references[index]!;
+      const updated: Reference = {
+        ...current,
+        pinned: !current.pinned,
+      };
+      references[index] = updated;
+      await this.storage.saveReferences(safeProjectId, references);
+      return { reference: updated, pinned: updated.pinned };
+    }
+
+    // Fallback across all projects if not found in target project
+    const allProjects = await this.storage.listProjectIds();
+    for (const pid of allProjects) {
+      if (pid === safeProjectId) continue;
+      const list = await this.storage.getReferences(pid);
+      const i = list.findIndex((r) => r.id === id);
+      if (i !== -1) {
+        const current = list[i]!;
+        const updated: Reference = {
+          ...current,
+          pinned: !current.pinned,
+        };
+        list[i] = updated;
+        await this.storage.saveReferences(pid, list);
+        return { reference: updated, pinned: updated.pinned };
+      }
+    }
+
+    return { reference: null, pinned: false };
+  }
+
   async update(
     projectId: string,
     id: string,
@@ -294,6 +349,7 @@ export class ReferenceService {
       previewUrl: patch.previewUrl !== undefined ? patch.previewUrl : current.previewUrl,
       faviconUrl: patch.faviconUrl !== undefined ? patch.faviconUrl : current.faviconUrl,
       domain: patch.domain !== undefined ? patch.domain : current.domain,
+      pinned: patch.pinned !== undefined ? (patch.pinned ?? false) : current.pinned,
       source: patch.source !== undefined ? (patch.source?.trim() || current.source) : current.source,
       aspectRatio: patch.aspectRatio !== undefined ? (patch.aspectRatio ?? null) : current.aspectRatio,
       projectName,

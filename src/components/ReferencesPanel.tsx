@@ -39,6 +39,7 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
   const [tags, setTags] = useState<TagInfo[]>([]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [kindFilter, setKindFilter] = useState<"all" | ReferenceKind>("all");
+  const [pinnedOnly, setPinnedOnly] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +69,7 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
           projectId: selectedProjectId ?? null,
           tag: selectedTag ?? null,
           kind: kindFilter === "all" ? null : kindFilter,
+          pinned: pinnedOnly ? true : null,
           query: searchQuery.trim() ? searchQuery.trim() : null,
         }),
         rpc.call("references_tags", {
@@ -92,7 +94,7 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [rpc, selectedProjectId, selectedTag, kindFilter, searchQuery, initialSelectedId]);
+  }, [rpc, selectedProjectId, selectedTag, kindFilter, pinnedOnly, searchQuery, initialSelectedId]);
 
   useEffect(() => {
     fetchData();
@@ -146,6 +148,38 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
         .catch(() => {});
     },
     [rpc, selectedProjectId, ctx?.projectId]
+  );
+
+  // Count pinned references (Камертон)
+  const pinnedCount = useMemo(() => references.filter((r) => r.pinned).length, [references]);
+
+  const handleTogglePin = useCallback(
+    async (id: string) => {
+      try {
+        // Optimistic UI update
+        setReferences((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, pinned: !r.pinned } : r))
+        );
+        if (selectedReference?.id === id) {
+          setSelectedReference((prev) => (prev ? { ...prev, pinned: !prev.pinned } : null));
+        }
+
+        const res = await rpc.call("references_toggle_pin", {
+          projectId: selectedProjectId ?? null,
+          id,
+        });
+
+        if (res.reference) {
+          setReferences((prev) =>
+            prev.map((r) => (r.id === id ? res.reference! : r))
+          );
+        }
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to toggle pin");
+        fetchData();
+      }
+    },
+    [rpc, selectedProjectId, selectedReference, fetchData]
   );
 
   // Quick 1-click Enter Add
@@ -367,6 +401,50 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
             )}
           </div>
 
+          {/* ADHD Working Set: Камертон (На столе) vs Все */}
+          {(!isGlobalView || viewMode === "feed") && (
+            <div className="flex items-center rounded-lg border border-border bg-background/80 p-0.5 shrink-0 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setPinnedOnly(false)}
+                className={cn(
+                  "rounded-md px-2 py-0.5 font-medium transition-colors",
+                  !pinnedOnly
+                    ? "bg-secondary text-foreground shadow-xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Все
+              </button>
+              <button
+                type="button"
+                onClick={() => setPinnedOnly(true)}
+                className={cn(
+                  "flex items-center gap-1 rounded-md px-2 py-0.5 font-medium transition-colors",
+                  pinnedOnly
+                    ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:text-primary"
+                )}
+                title="Показать только закрепленные ключевые референсы проекта (Камертон / На столе)"
+              >
+                <Icon name="Pin" className={cn("size-2.5", pinnedOnly ? "fill-current" : "")} />
+                <span>Камертон</span>
+                {pinnedCount > 0 && (
+                  <span
+                    className={cn(
+                      "ml-0.5 rounded-full px-1.5 py-0.2 text-[9px]",
+                      pinnedOnly
+                        ? "bg-primary-foreground/20 text-primary-foreground"
+                        : "bg-secondary text-secondary-foreground"
+                    )}
+                  >
+                    {pinnedCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
           {/* Kind Filter Switch (All | Images | Websites) */}
           {(!isGlobalView || viewMode === "feed") && (
             <div className="flex items-center rounded-lg border border-border bg-background/80 p-0.5 shrink-0 self-start sm:self-auto text-[11px]">
@@ -512,6 +590,7 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
                   setSelectedProjectId(id);
                   setSelectedTag(null);
                 }}
+                onTogglePin={handleTogglePin}
                 onRemove={handleRemove}
               />
             ))}
@@ -531,6 +610,7 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
           setSelectedProjectId(id);
           setSelectedTag(null);
         }}
+        onTogglePin={handleTogglePin}
       />
 
       {/* Full Add Reference Modal */}

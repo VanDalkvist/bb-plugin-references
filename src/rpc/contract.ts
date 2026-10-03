@@ -8,6 +8,7 @@ export const rpcContract = defineRpcContract({
       projectId: z.string().nullable().optional(),
       tag: z.string().nullable().optional(),
       kind: z.enum(["image", "website", "github", "doc"]).nullable().optional(),
+      pinned: z.boolean().nullable().optional(),
       query: z.string().nullable().optional(),
     }).nullable().optional(),
     output: z.object({
@@ -32,6 +33,7 @@ export const rpcContract = defineRpcContract({
       tags: z.array(z.string()).nullable().optional(),
       notes: z.string().nullable().optional(),
       prompt: z.string().nullable().optional(),
+      pinned: z.boolean().nullable().optional(),
       previewUrl: z.string().nullable().optional(),
       faviconUrl: z.string().nullable().optional(),
       domain: z.string().nullable().optional(),
@@ -49,6 +51,16 @@ export const rpcContract = defineRpcContract({
     }),
     output: z.object({
       removed: z.boolean(),
+    }),
+  },
+  references_toggle_pin: {
+    input: z.object({
+      projectId: z.string().nullable().optional(),
+      id: z.string(),
+    }),
+    output: z.object({
+      reference: referenceSchema.nullable(),
+      pinned: z.boolean(),
     }),
   },
   references_tags: {

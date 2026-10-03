@@ -11,6 +11,7 @@ export interface ReferenceCardProps {
   onSelect: (reference: Reference) => void;
   onTagClick?: (tag: string) => void;
   onProjectClick?: (projectId: string) => void;
+  onTogglePin?: (id: string) => void;
   onRemove: (id: string) => void;
 }
 
@@ -20,11 +21,20 @@ export const ReferenceCard = memo(function ReferenceCard({
   onSelect,
   onTagClick,
   onProjectClick,
+  onTogglePin,
   onRemove,
 }: ReferenceCardProps) {
   const [imgError, setImgError] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleTogglePin = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onTogglePin?.(reference.id);
+    },
+    [onTogglePin, reference.id]
+  );
 
   // Use previewUrl for website OG images, fallback to urlOrPath
   const targetImage = reference.previewUrl || reference.urlOrPath;
@@ -96,6 +106,14 @@ export const ReferenceCard = memo(function ReferenceCard({
           </div>
         )}
 
+        {/* Pinned Badge (Камертон / На столе) */}
+        {reference.pinned && (
+          <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-sm backdrop-blur-sm">
+            <Icon name="Pin" className="size-2.5 fill-current" />
+            <span>Камертон</span>
+          </div>
+        )}
+
         {/* Project Badge (for All References view) */}
         {showProjectBadge && reference.projectId && (
           <button
@@ -104,7 +122,10 @@ export const ReferenceCard = memo(function ReferenceCard({
               e.stopPropagation();
               onProjectClick?.(reference.projectId);
             }}
-            className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded bg-black/75 px-2 py-0.5 text-[10px] font-medium text-white/95 backdrop-blur-sm hover:bg-primary hover:text-primary-foreground transition-colors"
+            className={cn(
+              "absolute z-10 flex items-center gap-1 rounded bg-black/75 px-2 py-0.5 text-[10px] font-medium text-white/95 backdrop-blur-sm hover:bg-primary hover:text-primary-foreground transition-colors",
+              reference.pinned ? "top-2 left-20" : "top-2 left-2"
+            )}
             title={`Filter by project "${reference.projectName || reference.projectId}"`}
           >
             <Icon name="Folder" className="size-3" />
@@ -126,6 +147,24 @@ export const ReferenceCard = memo(function ReferenceCard({
 
         {/* Hover Action Overlay */}
         <div className="absolute inset-0 flex items-start justify-end gap-1.5 p-2 bg-gradient-to-b from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+          {/* Toggle Pin / Камертон */}
+          {onTogglePin && (
+            <Button
+              size="icon"
+              variant={reference.pinned ? "default" : "secondary"}
+              className={cn(
+                "size-7 backdrop-blur-sm transition-colors",
+                reference.pinned
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "bg-background/80 text-muted-foreground hover:text-foreground hover:bg-background"
+              )}
+              title={reference.pinned ? "Снять метку Камертона" : "Закрепить как Камертон (На столе)"}
+              onClick={handleTogglePin}
+            >
+              <Icon name="Pin" className={cn("size-3.5", reference.pinned && "fill-current")} />
+            </Button>
+          )}
+
           {/* Copy URL / Path */}
           <Button
             size="icon"

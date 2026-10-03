@@ -14,6 +14,7 @@ export const referenceSchema = z.object({
   addedAt: z.string(),
   notes: z.string().nullable().optional(),
   prompt: z.string().nullable().optional(),
+  pinned: z.boolean().default(false),
   previewUrl: z.string().nullable().optional(),
   faviconUrl: z.string().nullable().optional(),
   domain: z.string().nullable().optional(),
@@ -30,6 +31,7 @@ export const createReferenceInputSchema = z.object({
   tags: z.array(z.string()).nullable().optional(),
   notes: z.string().nullable().optional(),
   prompt: z.string().nullable().optional(),
+  pinned: z.boolean().nullable().optional(),
   previewUrl: z.string().nullable().optional(),
   faviconUrl: z.string().nullable().optional(),
   domain: z.string().nullable().optional(),
@@ -42,6 +44,7 @@ export type CreateReferenceInput = z.infer<typeof createReferenceInputSchema>;
 export const referenceFilterSchema = z.object({
   tag: z.string().nullable().optional(),
   kind: referenceKindSchema.nullable().optional(),
+  pinned: z.boolean().nullable().optional(),
   query: z.string().nullable().optional(),
 });
 

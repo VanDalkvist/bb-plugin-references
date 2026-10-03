@@ -12,6 +12,7 @@ export interface ReferenceLightboxProps {
   onSelectReference?: (reference: Reference) => void;
   onTagClick?: (tag: string) => void;
   onProjectClick?: (projectId: string) => void;
+  onTogglePin?: (id: string) => void;
 }
 
 export function ReferenceLightbox({
@@ -21,6 +22,7 @@ export function ReferenceLightbox({
   onSelectReference,
   onTagClick,
   onProjectClick,
+  onTogglePin,
 }: ReferenceLightboxProps) {
   const [scale, setScale] = useState(1);
   const [copied, setCopied] = useState(false);
@@ -114,6 +116,13 @@ export function ReferenceLightbox({
               {reference.title}
             </h3>
 
+            {reference.pinned && (
+              <span className="flex shrink-0 items-center gap-1 rounded bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-sm">
+                <Icon name="Pin" className="size-2.5 fill-current" />
+                <span>Камертон</span>
+              </span>
+            )}
+
             {reference.projectId && (
               <button
                 type="button"
@@ -198,6 +207,23 @@ export function ReferenceLightbox({
             </Button>
 
             <div className="mx-1 h-4 w-px bg-border" />
+
+            {/* Toggle Pin / Камертон */}
+            {onTogglePin && (
+              <Button
+                size="sm"
+                variant={reference.pinned ? "default" : "outline"}
+                className={cn(
+                  "h-8 gap-1.5 text-xs font-medium transition-colors",
+                  reference.pinned && "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
+                onClick={() => onTogglePin(reference.id)}
+                title={reference.pinned ? "Снять метку Камертона" : "Закрепить как Камертон (На столе)"}
+              >
+                <Icon name="Pin" className={cn("size-3.5", reference.pinned && "fill-current")} />
+                <span>{reference.pinned ? "В Камертоне" : "В Камертон"}</span>
+              </Button>
+            )}
 
             {/* Copy button */}
             <Button
