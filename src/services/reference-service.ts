@@ -27,7 +27,7 @@ export class ReferenceService {
     }
   }
 
-  private normalizeTags(tags?: string[]): string[] {
+  private normalizeTags(tags?: string[] | null): string[] {
     if (!tags || !Array.isArray(tags)) return [];
     const set = new Set<string>();
     for (const tag of tags) {
@@ -51,9 +51,9 @@ export class ReferenceService {
       title,
       tags,
       addedAt: new Date().toISOString(),
-      notes: input.notes?.trim() || undefined,
+      notes: input.notes?.trim() || null,
       source: input.source?.trim() || "manual",
-      aspectRatio: input.aspectRatio,
+      aspectRatio: input.aspectRatio ?? null,
     };
 
     const existing = await this.storage.getReferences(safeProjectId);
@@ -127,12 +127,12 @@ export class ReferenceService {
     const current = refs[index]!;
     const updated: Reference = {
       ...current,
-      title: patch.title !== undefined ? patch.title.trim() : current.title,
-      urlOrPath: patch.urlOrPath !== undefined ? patch.urlOrPath.trim() : current.urlOrPath,
-      tags: patch.tags !== undefined ? this.normalizeTags(patch.tags) : current.tags,
-      notes: patch.notes !== undefined ? (patch.notes.trim() || undefined) : current.notes,
-      source: patch.source !== undefined ? patch.source.trim() : current.source,
-      aspectRatio: patch.aspectRatio !== undefined ? patch.aspectRatio : current.aspectRatio,
+      title: patch.title !== undefined ? (patch.title?.trim() || current.title) : current.title,
+      urlOrPath: patch.urlOrPath !== undefined ? (patch.urlOrPath?.trim() || current.urlOrPath) : current.urlOrPath,
+      tags: patch.tags !== undefined ? this.normalizeTags(patch.tags || undefined) : current.tags,
+      notes: patch.notes !== undefined ? (patch.notes?.trim() || null) : current.notes,
+      source: patch.source !== undefined ? (patch.source?.trim() || current.source) : current.source,
+      aspectRatio: patch.aspectRatio !== undefined ? (patch.aspectRatio ?? null) : current.aspectRatio,
     };
 
     refs[index] = updated;

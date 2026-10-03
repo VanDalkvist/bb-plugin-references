@@ -42,9 +42,9 @@ export function AddReferenceModal({
       try {
         await onSubmit({
           urlOrPath: trimmedUrl,
-          title: title.trim() || undefined,
-          tags: tags.length > 0 ? tags : undefined,
-          notes: notes.trim() || undefined,
+          title: title.trim() || null,
+          tags: tags.length > 0 ? tags : null,
+          notes: notes.trim() || null,
           source: "manual",
         });
 

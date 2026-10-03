@@ -39,8 +39,8 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
       const [refsRes, tagsRes] = await Promise.all([
         rpc.call("references_list", {
           projectId,
-          tag: selectedTag || undefined,
-          query: searchQuery.trim() || undefined,
+          tag: selectedTag ?? null,
+          query: searchQuery.trim() ? searchQuery.trim() : null,
         }),
         rpc.call("references_tags", { projectId }),
       ]);
@@ -89,7 +89,12 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
     async (input: CreateReferenceInput) => {
       const newRef = await rpc.call("references_add", {
         projectId,
-        ...input,
+        urlOrPath: input.urlOrPath,
+        title: input.title ?? null,
+        tags: input.tags ?? null,
+        notes: input.notes ?? null,
+        source: input.source ?? null,
+        aspectRatio: input.aspectRatio ?? null,
       });
       setReferences((prev) => [newRef, ...prev]);
       // Also refresh tags

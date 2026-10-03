@@ -73,9 +73,12 @@ export default async function plugin(bb: BbPluginApi) {
 
   // 2. RPC Methods
   bb.rpc.register(rpcContract, {
-    references_list: async ({ projectId, tag, query }) => {
-      const pid = projectId?.trim() || "default";
-      const refs = await service.list(pid, { tag, query });
+    references_list: async (input) => {
+      const pid = input?.projectId?.trim() || "default";
+      const refs = await service.list(pid, {
+        tag: input?.tag || undefined,
+        query: input?.query || undefined,
+      });
       return { references: refs };
     },
 
@@ -130,8 +133,8 @@ export default async function plugin(bb: BbPluginApi) {
       return { removed };
     },
 
-    references_tags: async ({ projectId }) => {
-      const pid = projectId?.trim() || "default";
+    references_tags: async (input) => {
+      const pid = input?.projectId?.trim() || "default";
       const tags = await service.listTags(pid);
       return { tags };
     },

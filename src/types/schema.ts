@@ -7,27 +7,27 @@ export const referenceSchema = z.object({
   title: z.string().min(1),
   tags: z.array(z.string()).default([]),
   addedAt: z.string(),
-  notes: z.string().optional(),
+  notes: z.string().nullable().optional(),
   source: z.string().default("manual"),
-  aspectRatio: z.number().positive().optional(),
+  aspectRatio: z.number().positive().nullable().optional(),
 });
 
 export type Reference = z.infer<typeof referenceSchema>;
 
 export const createReferenceInputSchema = z.object({
   urlOrPath: z.string().min(1, "URL or path is required"),
-  title: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  notes: z.string().optional(),
-  source: z.string().optional(),
-  aspectRatio: z.number().positive().optional(),
+  title: z.string().nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  notes: z.string().nullable().optional(),
+  source: z.string().nullable().optional(),
+  aspectRatio: z.number().positive().nullable().optional(),
 });
 
 export type CreateReferenceInput = z.infer<typeof createReferenceInputSchema>;
 
 export const referenceFilterSchema = z.object({
-  tag: z.string().optional(),
-  query: z.string().optional(),
+  tag: z.string().nullable().optional(),
+  query: z.string().nullable().optional(),
 });
 
 export type ReferenceFilter = z.infer<typeof referenceFilterSchema>;
