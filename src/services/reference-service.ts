@@ -120,7 +120,7 @@ export class ReferenceService {
         notes: notes ?? current.notes,
         previewUrl: previewUrl ?? current.previewUrl,
         faviconUrl: faviconUrl ?? current.faviconUrl,
-        domain: domain ?? current.domain,
+        domain: domain ?? current.domain ?? null,
         source: input.source?.trim() || current.source,
         aspectRatio: input.aspectRatio !== undefined ? (input.aspectRatio ?? null) : current.aspectRatio,
         projectName,
@@ -142,7 +142,7 @@ export class ReferenceService {
       notes,
       previewUrl,
       faviconUrl,
-      domain,
+      domain: domain ?? null,
       source: input.source?.trim() || "manual",
       aspectRatio: input.aspectRatio ?? null,
     };

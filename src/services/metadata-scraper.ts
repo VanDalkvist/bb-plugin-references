@@ -130,8 +130,27 @@ export class MetadataScraper {
     };
   }
 
+  private isBlockedHost(hostname: string): boolean {
+    const lower = hostname.toLowerCase();
+    // Guard against cloud metadata endpoints (AP-016 SSRF protection)
+    return (
+      lower === "169.254.169.254" ||
+      lower === "metadata.google.internal" ||
+      lower === "metadata.packet.net"
+    );
+  }
+
   async scrape(url: string): Promise<ScrapedMetadata> {
     if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      return { kind: "image" };
+    }
+
+    try {
+      const parsed = new URL(url);
+      if (this.isBlockedHost(parsed.hostname)) {
+        return { kind: "website", title: parsed.hostname, domain: parsed.hostname };
+      }
+    } catch {
       return { kind: "image" };
     }
 
@@ -144,10 +163,10 @@ export class MetadataScraper {
       };
     }
 
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout (AP-043)
 
+    try {
       const response = await fetch(url, {
         signal: controller.signal,
         headers: {
@@ -156,8 +175,6 @@ export class MetadataScraper {
           Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         },
       });
-
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
         let domain: string | undefined;
@@ -172,7 +189,7 @@ export class MetadataScraper {
         };
       }
 
-      // Read at most 128KB of HTML to find head tags quickly
+      // Read at most 128KB of HTML to find head tags quickly (AP-043 stream bounding)
       const reader = response.body?.getReader();
       let html = "";
       if (reader) {
@@ -202,6 +219,8 @@ export class MetadataScraper {
         domain,
         faviconUrl: this.resolveUrl(url, "/favicon.ico"),
       };
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 }
