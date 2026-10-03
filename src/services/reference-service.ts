@@ -8,12 +8,15 @@ import type {
   ProjectSummary,
 } from "../types/schema.ts";
 import type { ReferenceStorage } from "../storage/reference-storage.ts";
+import type { ProjectResolver } from "./project-resolver.ts";
 
 export class ReferenceService {
   private storage: ReferenceStorage;
+  private projectResolver?: ProjectResolver;
 
-  constructor(storage: ReferenceStorage) {
+  constructor(storage: ReferenceStorage, projectResolver?: ProjectResolver) {
     this.storage = storage;
+    this.projectResolver = projectResolver;
   }
 
   private deriveTitle(urlOrPath: string): string {
@@ -45,14 +48,53 @@ export class ReferenceService {
     return Array.from(set);
   }
 
+  private async resolveProjectId(projectId?: string | null): Promise<string> {
+    const raw = projectId?.trim();
+    if (!raw || raw === "default") {
+      return "default";
+    }
+    if (this.projectResolver) {
+      return this.projectResolver.resolveCanonicalId(raw);
+    }
+    return raw;
+  }
+
   async add(projectId: string, input: CreateReferenceInput): Promise<Reference> {
-    const safeProjectId = projectId.trim() || "default";
+    const safeProjectId = await this.resolveProjectId(projectId);
     const title = input.title?.trim() || this.deriveTitle(input.urlOrPath);
     const tags = this.normalizeTags(input.tags || undefined);
+    const projectName = this.projectResolver
+      ? await this.projectResolver.getProjectName(safeProjectId)
+      : safeProjectId;
+
+    const existing = await this.storage.getReferences(safeProjectId);
+    const normalizedUrl = input.urlOrPath.trim().toLowerCase();
+
+    // AP-035 Idempotency: Check if this reference already exists in the project
+    const existingIndex = existing.findIndex(
+      (r) => r.urlOrPath.trim().toLowerCase() === normalizedUrl
+    );
+
+    if (existingIndex !== -1) {
+      const current = existing[existingIndex]!;
+      const updated: Reference = {
+        ...current,
+        title: input.title?.trim() || current.title,
+        tags: input.tags ? this.normalizeTags(input.tags) : current.tags,
+        notes: input.notes !== undefined ? (input.notes?.trim() || null) : current.notes,
+        source: input.source?.trim() || current.source,
+        aspectRatio: input.aspectRatio !== undefined ? (input.aspectRatio ?? null) : current.aspectRatio,
+        projectName,
+      };
+      existing[existingIndex] = updated;
+      await this.storage.saveReferences(safeProjectId, existing);
+      return updated;
+    }
 
     const ref: Reference = {
       id: randomUUID().slice(0, 8),
       projectId: safeProjectId,
+      projectName,
       urlOrPath: input.urlOrPath.trim(),
       title,
       tags,
@@ -62,7 +104,6 @@ export class ReferenceService {
       aspectRatio: input.aspectRatio ?? null,
     };
 
-    const existing = await this.storage.getReferences(safeProjectId);
     // Put newest references first
     await this.storage.saveReferences(safeProjectId, [ref, ...existing]);
     return ref;
@@ -70,24 +111,22 @@ export class ReferenceService {
 
   async list(projectId?: string | null, filter?: ReferenceFilter): Promise<Reference[]> {
     const isAll = !projectId || projectId.trim() === "" || projectId.trim() === "all";
+    const canonicalId = isAll ? null : await this.resolveProjectId(projectId);
+
     const refs = isAll
       ? await this.storage.getAllReferences()
-      : await this.storage.getReferences(projectId.trim());
-
-    if (!filter) {
-      return refs;
-    }
+      : await this.storage.getReferences(canonicalId!);
 
     let result = refs;
 
-    if (filter.tag) {
+    if (filter?.tag) {
       const targetTag = filter.tag.trim().toLowerCase();
       result = result.filter((ref) =>
         ref.tags.some((t) => t.toLowerCase() === targetTag)
       );
     }
 
-    if (filter.query) {
+    if (filter?.query) {
       const q = filter.query.trim().toLowerCase();
       result = result.filter((ref) => {
         const titleMatch = ref.title.toLowerCase().includes(q);
@@ -97,6 +136,17 @@ export class ReferenceService {
         const projectMatch = ref.projectId.toLowerCase().includes(q);
         return titleMatch || notesMatch || urlMatch || tagMatch || projectMatch;
       });
+    }
+
+    // Enrich with human project names
+    if (this.projectResolver) {
+      const enriched = await Promise.all(
+        result.map(async (r) => ({
+          ...r,
+          projectName: await this.projectResolver!.getProjectName(r.projectId),
+        }))
+      );
+      return enriched;
     }
 
     return result;
@@ -111,9 +161,13 @@ export class ReferenceService {
           .slice(0, 4)
           .map((r) => r.urlOrPath);
 
+        const name = this.projectResolver
+          ? await this.projectResolver.getProjectName(id)
+          : id;
+
         return {
           id,
-          name: id,
+          name,
           count: refs.length,
           previewUrls,
           lastUpdatedAt: refs[0]?.addedAt || null,
@@ -130,20 +184,30 @@ export class ReferenceService {
   }
 
   async get(projectId: string, id: string): Promise<Reference | null> {
-    const refs = await this.storage.getReferences(projectId);
-    return refs.find((ref) => ref.id === id) ?? null;
+    const canonicalId = await this.resolveProjectId(projectId);
+    const refs = await this.storage.getReferences(canonicalId);
+    const found = refs.find((ref) => ref.id === id);
+    if (!found) return null;
+
+    if (this.projectResolver) {
+      return {
+        ...found,
+        projectName: await this.projectResolver.getProjectName(found.projectId),
+      };
+    }
+    return found;
   }
 
   async remove(projectId: string, id: string): Promise<boolean> {
-    const safeProjectId = projectId.trim() || "default";
-    const refs = await this.storage.getReferences(safeProjectId);
+    const canonicalId = await this.resolveProjectId(projectId);
+    const refs = await this.storage.getReferences(canonicalId);
     const filtered = refs.filter((ref) => ref.id !== id);
 
     if (filtered.length === refs.length) {
       return false;
     }
 
-    await this.storage.saveReferences(safeProjectId, filtered);
+    await this.storage.saveReferences(canonicalId, filtered);
     return true;
   }
 
@@ -152,8 +216,8 @@ export class ReferenceService {
     id: string,
     patch: Partial<Omit<Reference, "id" | "projectId" | "addedAt">>
   ): Promise<Reference | null> {
-    const safeProjectId = projectId.trim() || "default";
-    const refs = await this.storage.getReferences(safeProjectId);
+    const canonicalId = await this.resolveProjectId(projectId);
+    const refs = await this.storage.getReferences(canonicalId);
     const index = refs.findIndex((ref) => ref.id === id);
 
     if (index === -1) {
@@ -161,6 +225,10 @@ export class ReferenceService {
     }
 
     const current = refs[index]!;
+    const projectName = this.projectResolver
+      ? await this.projectResolver.getProjectName(canonicalId)
+      : current.projectName || canonicalId;
+
     const updated: Reference = {
       ...current,
       title: patch.title !== undefined ? (patch.title?.trim() || current.title) : current.title,
@@ -169,18 +237,21 @@ export class ReferenceService {
       notes: patch.notes !== undefined ? (patch.notes?.trim() || null) : current.notes,
       source: patch.source !== undefined ? (patch.source?.trim() || current.source) : current.source,
       aspectRatio: patch.aspectRatio !== undefined ? (patch.aspectRatio ?? null) : current.aspectRatio,
+      projectName,
     };
 
     refs[index] = updated;
-    await this.storage.saveReferences(safeProjectId, refs);
+    await this.storage.saveReferences(canonicalId, refs);
     return updated;
   }
 
   async listTags(projectId?: string | null): Promise<TagInfo[]> {
     const isAll = !projectId || projectId.trim() === "" || projectId.trim() === "all";
+    const canonicalId = isAll ? null : await this.resolveProjectId(projectId);
+
     const refs = isAll
       ? await this.storage.getAllReferences()
-      : await this.storage.getReferences(projectId.trim());
+      : await this.storage.getReferences(canonicalId!);
 
     const map = new Map<string, number>();
 

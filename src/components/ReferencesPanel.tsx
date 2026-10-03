@@ -25,12 +25,12 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
   // If user is inside a specific project, default to it; otherwise null (All Projects)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => ctx?.projectId || null);
 
-  // View mode when viewing All Projects: 'projects' (folder grid) vs 'feed' (all images)
+  // View mode when viewing All Projects: 'feed' (all images) vs 'projects' (folder grid)
   const [viewMode, setViewMode] = useState<"projects" | "feed">(() => {
     try {
-      return (localStorage.getItem(VIEW_MODE_KEY) as "projects" | "feed") || "projects";
+      return (localStorage.getItem(VIEW_MODE_KEY) as "projects" | "feed") || "feed";
     } catch {
-      return "projects";
+      return "feed";
     }
   });
 
@@ -99,17 +99,18 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
 
   useRealtime("references-open", (payload: unknown) => {
     const data = payload as { projectId?: string; referenceId?: string };
-    if (!data.projectId || data.projectId === selectedProjectId || !selectedProjectId) {
-      fetchData();
-      if (data.referenceId) {
-        rpc.call("references_get", { projectId: data.projectId || selectedProjectId || "default", id: data.referenceId })
-          .then((res) => {
-            if (res.reference) {
-              setSelectedReference(res.reference);
-            }
-          })
-          .catch(() => {});
-      }
+    if (data.projectId && data.projectId !== selectedProjectId) {
+      setSelectedProjectId(data.projectId);
+    }
+    fetchData();
+    if (data.referenceId) {
+      rpc.call("references_get", { projectId: data.projectId || selectedProjectId || "default", id: data.referenceId })
+        .then((res) => {
+          if (res.reference) {
+            setSelectedReference(res.reference);
+          }
+        })
+        .catch(() => {});
     }
   });
 
@@ -169,6 +170,15 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
 
   const isGlobalView = selectedProjectId === null;
 
+  const currentProjectName = useMemo(() => {
+    if (!selectedProjectId) return "All Projects";
+    const found = projects.find((p) => p.id === selectedProjectId);
+    if (found?.name) return found.name;
+    const ref = references.find((r) => r.projectId === selectedProjectId);
+    if (ref?.projectName) return ref.projectName;
+    return selectedProjectId;
+  }, [selectedProjectId, projects, references]);
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
       {/* Top Header / Toolbar */}
@@ -200,7 +210,7 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
                 <span className="text-muted-foreground/60">/</span>
                 <div className="flex items-center gap-1 font-semibold text-foreground truncate">
                   <Icon name="Folder" className="size-3.5 text-primary shrink-0" />
-                  <span className="truncate">{selectedProjectId}</span>
+                  <span className="truncate" title={selectedProjectId}>{currentProjectName}</span>
                   <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground shrink-0">
                     {references.length}
                   </span>

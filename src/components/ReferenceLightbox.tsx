@@ -120,10 +120,10 @@ export function ReferenceLightbox({
                   onProjectClick?.(reference.projectId);
                 }}
                 className="flex items-center gap-1 rounded bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground hover:bg-secondary/80 hover:text-primary transition-colors"
-                title={`Project: ${reference.projectId}`}
+                title={`Project: ${reference.projectName || reference.projectId}`}
               >
                 <Icon name="Folder" className="size-3" />
-                <span>{reference.projectId}</span>
+                <span>{reference.projectName || reference.projectId}</span>
               </button>
             )}
 

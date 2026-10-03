@@ -42,6 +42,45 @@ describe("ReferenceService (TDD)", () => {
     assert.equal(list[0]?.id, ref.id);
   });
 
+  test("prevents duplicate references on add (AP-035 Idempotency)", async () => {
+    const ref1 = await service.add("proj-1", {
+      urlOrPath: "https://example.com/assets/same-image.png",
+      title: "Initial Title",
+      tags: ["tag1"],
+    });
+
+    // Add again with same URL but updated title and notes
+    const ref2 = await service.add("proj-1", {
+      urlOrPath: "https://example.com/assets/same-image.png",
+      title: "Updated Title",
+      tags: ["tag1", "tag2"],
+      notes: "Updated note",
+    });
+
+    // Should update existing reference without creating duplicate
+    assert.equal(ref2.id, ref1.id);
+    assert.equal(ref2.title, "Updated Title");
+    assert.deepEqual(ref2.tags, ["tag1", "tag2"]);
+
+    const list = await service.list("proj-1");
+    assert.equal(list.length, 1, "Should only have 1 reference, not 2");
+    assert.equal(list[0]?.title, "Updated Title");
+  });
+
+  test("deduplicates identical images across projects in getAllReferences", async () => {
+    await service.add("proj-1", {
+      urlOrPath: "https://example.com/shared-hero.png",
+      title: "Hero in Proj 1",
+    });
+    await service.add("proj-2", {
+      urlOrPath: "https://example.com/shared-hero.png",
+      title: "Hero in Proj 2",
+    });
+
+    const all = await service.list(null);
+    assert.equal(all.length, 1, "Should deduplicate identical image URLs in all-projects feed");
+  });
+
   test("uses explicit title when provided", async () => {
     const ref = await service.add("proj-1", {
       urlOrPath: "docs/references/hero.png",

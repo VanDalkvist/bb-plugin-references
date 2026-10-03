@@ -80,6 +80,24 @@ export class FileReferenceStorage implements ReferenceStorage {
     const ids = await this.listProjectIds();
     const lists = await Promise.all(ids.map((id) => this.getReferences(id)));
     const all = lists.flat();
-    return all.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
+
+    // Deduplicate by urlOrPath (case-insensitive & trimmed) or id
+    const seenUrls = new Set<string>();
+    const seenIds = new Set<string>();
+    const deduplicated: Reference[] = [];
+
+    // Sort newest first before deduplication so latest version wins
+    all.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
+
+    for (const ref of all) {
+      const urlKey = ref.urlOrPath.trim().toLowerCase();
+      if (!seenUrls.has(urlKey) && !seenIds.has(ref.id)) {
+        seenUrls.add(urlKey);
+        seenIds.add(ref.id);
+        deduplicated.push(ref);
+      }
+    }
+
+    return deduplicated;
   }
 }

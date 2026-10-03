@@ -7,6 +7,7 @@ import { z } from "zod";
 import { rpcContract } from "./src/rpc/contract.ts";
 import { FileReferenceStorage } from "./src/storage/reference-storage.ts";
 import { ReferenceService } from "./src/services/reference-service.ts";
+import { DefaultProjectResolver } from "./src/services/project-resolver.ts";
 import { handleCliCommand, CLI_USAGE } from "./src/cli/commands.ts";
 import { handleImageRequest } from "./src/server/image-handler.ts";
 
@@ -40,7 +41,18 @@ export default async function plugin(bb: BbPluginApi) {
 
   const baseStorageDir = await getStorageDir();
   const storage = new FileReferenceStorage(baseStorageDir);
-  const service = new ReferenceService(storage);
+  const projectResolver = new DefaultProjectResolver(async () => {
+    try {
+      const res = await bb.sdk.projects.list();
+      if (Array.isArray(res)) {
+        return res.map((p) => ({ id: p.id, name: p.name || p.id }));
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
+  const service = new ReferenceService(storage, projectResolver);
 
   const allowedRoots = [
     homedir(),
@@ -84,7 +96,12 @@ export default async function plugin(bb: BbPluginApi) {
 
     references_get: async ({ projectId, id }) => {
       const pid = projectId?.trim() || "default";
-      const ref = await service.get(pid, id);
+      let ref = await service.get(pid, id);
+      if (!ref) {
+        // Fallback across all projects if not found in specific projectId
+        const allRefs = await service.list(null);
+        ref = allRefs.find((r) => r.id === id) || null;
+      }
       return { reference: ref };
     },
 
@@ -110,12 +127,12 @@ export default async function plugin(bb: BbPluginApi) {
       });
 
       // Ephemeral broadcast to keep all open reference views fresh
-      bb.realtime.publish("references-changed", { projectId: pid });
+      bb.realtime.publish("references-changed", { projectId: ref.projectId });
 
       if (open) {
         // Killer feature: auto-open the references tab in BB
         bb.realtime.publish("references-open", {
-          projectId: pid,
+          projectId: ref.projectId,
           threadId,
           referenceId: ref.id,
         });
@@ -218,11 +235,11 @@ export default async function plugin(bb: BbPluginApi) {
         source: "agent",
       });
 
-      bb.realtime.publish("references-changed", { projectId: pid });
+      bb.realtime.publish("references-changed", { projectId: ref.projectId });
 
       if (params.open !== false) {
         bb.realtime.publish("references-open", {
-          projectId: pid,
+          projectId: ref.projectId,
           threadId: ctx.threadId,
           referenceId: ref.id,
         });
@@ -232,7 +249,7 @@ export default async function plugin(bb: BbPluginApi) {
         content: [
           {
             type: "text",
-            text: `Added reference "${ref.title}" [${ref.id}] to project "${pid}". References panel opened automatically in BB IDE.`,
+            text: `Added reference "${ref.title}" [${ref.id}] to project "${ref.projectName || ref.projectId}". References panel opened automatically in BB IDE.`,
           },
         ],
       };

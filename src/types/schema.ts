@@ -3,6 +3,7 @@ import { z } from "zod";
 export const referenceSchema = z.object({
   id: z.string().min(1),
   projectId: z.string().min(1),
+  projectName: z.string().nullable().optional(),
   urlOrPath: z.string().min(1),
   title: z.string().min(1),
   tags: z.array(z.string()).default([]),

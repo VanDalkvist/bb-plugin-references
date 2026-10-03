@@ -91,10 +91,10 @@ export const ReferenceCard = memo(function ReferenceCard({
               onProjectClick?.(reference.projectId);
             }}
             className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded bg-black/75 px-2 py-0.5 text-[10px] font-medium text-white/95 backdrop-blur-sm hover:bg-primary hover:text-primary-foreground transition-colors"
-            title={`Filter by project "${reference.projectId}"`}
+            title={`Filter by project "${reference.projectName || reference.projectId}"`}
           >
             <Icon name="Folder" className="size-3" />
-            <span>{reference.projectId}</span>
+            <span>{reference.projectName || reference.projectId}</span>
           </button>
         )}
 
