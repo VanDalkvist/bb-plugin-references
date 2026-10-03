@@ -48,3 +48,34 @@ bb references list --json
 The plugin registers native agent tools:
 - `references_add({ urlOrPath, title, tags, notes, open: true })`
 - `references_list({ tag, query })`
+
+## Inline Chat Previews & Hyperlinks
+
+BB IDE renders interactive inline widgets and clickable hyperlinks for references directly in chat:
+
+### 1. Rich Inline Reference Preview Directive
+Emit the directive as its own standalone block (do NOT put it inside backticks or code fences):
+
+```text
+::reference{id="c88bd761"}
+```
+
+Optional attributes:
+- `project="Projects"` — target project
+- `url="/path/to/img.png" title="Custom Title"` — preview ad-hoc image directly
+
+### 2. Multi-Reference Mini-Gallery Directive
+To display a compact strip of project or tag references inline in chat:
+
+```text
+::references{project="Projects"}
+::references{tag="ui"}
+::references{ids="c88bd761,6e779a60,cfc62fb0"}
+```
+
+### 3. Clickable Chat Hyperlinks
+Use standard Markdown links in your messages. When clicked, BB instantly opens the References panel in the right sidebar focused on that specific image:
+
+- `[🖼️ Открыть референс: Название](#reference:<reference-id>)`
+- `[Посмотреть в панели референсов](bb://references/<reference-id>)`
+

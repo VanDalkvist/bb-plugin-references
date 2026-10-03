@@ -1,18 +1,23 @@
 // bb-plugin-references — Visual references and moodboard panel frontend
+import { useEffect } from "react";
 import {
   definePluginApp,
   useBbNavigate,
   useRealtime,
   type PluginThreadPanelProps,
-  type PluginThreadHeaderActionProps,
 } from "@get-bb/plugin-sdk/app";
 import { ReferencesPanel } from "./src/components/ReferencesPanel.tsx";
+import { InlineReferenceDirective } from "./src/components/InlineReferenceDirective.tsx";
+import { InlineReferencesGalleryDirective } from "./src/components/InlineReferencesGalleryDirective.tsx";
+import { mountReferenceLinksContentScript } from "./src/content-scripts/reference-links.ts";
 import { Button } from "./components/ui/button.tsx";
 import { Icon } from "./components/ui/icon.tsx";
 
 /**
- * Invisible overlay component that listens for the agent's realtime "references-open"
- * signal and automatically pops open the references panel in BB IDE (Killer Feature).
+ * Invisible overlay component that listens for:
+ * 1. Agent realtime "references-open" signals
+ * 2. Chat hyperlink clicks from content-script ("bb:references:open-reference")
+ * and automatically pops open the references panel in BB IDE focused on the target item.
  */
 function ReferencesAutoOpener() {
   const navigate = useBbNavigate();
@@ -27,6 +32,24 @@ function ReferencesAutoOpener() {
       params: initialSelectedId ? { initialSelectedId } : null,
     });
   });
+
+  useEffect(() => {
+    const handleCustomOpen = (e: Event) => {
+      const detail = (e as CustomEvent<{ id: string; projectId?: string }>).detail;
+      if (detail?.id) {
+        navigate.openThreadPanel({
+          actionId: "project-references",
+          title: "References",
+          params: { initialSelectedId: detail.id },
+        });
+      }
+    };
+
+    window.addEventListener("bb:references:open-reference", handleCustomOpen);
+    return () => {
+      window.removeEventListener("bb:references:open-reference", handleCustomOpen);
+    };
+  }, [navigate]);
 
   return null;
 }
@@ -81,7 +104,7 @@ function NavPanelComponent() {
 }
 
 export default definePluginApp((app) => {
-  // 1. Killer feature auto-opener overlay
+  // 1. Killer feature auto-opener overlay (realtime + chat hyperlinks)
   app.slots.experimental_appOverlay({
     id: "references-auto-opener",
     component: ReferencesAutoOpener,
@@ -110,5 +133,22 @@ export default definePluginApp((app) => {
     icon: "Images",
     path: "references",
     component: NavPanelComponent,
+  });
+
+  // 5. Chat message directives for rich inline reference previews
+  app.slots.messageDirective({
+    id: "reference",
+    component: InlineReferenceDirective,
+  });
+
+  app.slots.messageDirective({
+    id: "references",
+    component: InlineReferencesGalleryDirective,
+  });
+
+  // 6. Content script for clickable reference hyperlinks in chat
+  app.contentScripts.register({
+    id: "reference-links",
+    mount: mountReferenceLinksContentScript,
   });
 });

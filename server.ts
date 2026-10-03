@@ -249,7 +249,7 @@ export default async function plugin(bb: BbPluginApi) {
         content: [
           {
             type: "text",
-            text: `Added reference "${ref.title}" [${ref.id}] to project "${ref.projectName || ref.projectId}". References panel opened automatically in BB IDE.`,
+            text: `Added reference "${ref.title}" [${ref.id}] to project "${ref.projectName || ref.projectId}".\n\n::reference{id="${ref.id}" project="${ref.projectId}"}\n\n[🖼️ Open in References panel](#reference:${ref.id})`,
           },
         ],
       };

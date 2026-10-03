@@ -93,13 +93,15 @@ export async function handleImageRequest(
     }
 
     const content = await readFile(canonical);
+    const etag = `"${fileStat.size}-${Math.floor(fileStat.mtimeMs)}"`;
 
     return {
       status: 200,
       body: content,
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "public, max-age=3600, immutable",
+        "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+        "ETag": etag,
         "X-Content-Type-Options": "nosniff",
       },
     };
