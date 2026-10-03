@@ -211,7 +211,7 @@ export default async function plugin(bb: BbPluginApi) {
         argv,
         service,
         (ch, payload) => bb.realtime.publish(ch, payload),
-        "default"
+        process.env.BB_PROJECT_ID || "default"
       );
     },
   });

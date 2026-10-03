@@ -135,9 +135,22 @@ export async function handleCliCommand(
         return error("Missing reference ID to remove. Usage: bb references remove <id>");
       }
 
-      const removed = await service.remove(projectId, id);
+      let removed = await service.remove(projectId, id);
       if (!removed) {
-        return error(`Reference with ID "${id}" not found in project "${projectId}".`);
+        // Fallback: search across all projects if not found in target project
+        const allRefs = await service.list(null);
+        const match = allRefs.find((r) => r.id === id);
+        if (match) {
+          removed = await service.remove(match.projectId, id);
+          if (removed) {
+            publisher("references-changed", { projectId: match.projectId });
+            return reply(
+              { removed: true, id, projectId: match.projectId },
+              `Removed reference ${id} from project "${match.projectId}".`
+            );
+          }
+        }
+        return error(`Reference with ID "${id}" not found.`);
       }
 
       publisher("references-changed", { projectId });
@@ -146,10 +159,18 @@ export async function handleCliCommand(
 
     case "open": {
       const id = getOpt("--id") || positional[0];
-      publisher("references-open", { projectId, referenceId: id });
+      let targetProject = projectId;
+      if (id && (!targetProject || targetProject === "default")) {
+        const allRefs = await service.list(null);
+        const match = allRefs.find((r) => r.id === id);
+        if (match) {
+          targetProject = match.projectId;
+        }
+      }
+      publisher("references-open", { projectId: targetProject, referenceId: id });
       return reply(
-        { ok: true, projectId, referenceId: id },
-        `Opened references panel for project "${projectId}"${id ? ` (selected: ${id})` : ""}.`
+        { ok: true, projectId: targetProject, referenceId: id },
+        `Opened references panel for project "${targetProject}"${id ? ` (selected: ${id})` : ""}.`
       );
     }
 
