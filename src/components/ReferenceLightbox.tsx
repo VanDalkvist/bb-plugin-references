@@ -298,6 +298,28 @@ export function ReferenceLightbox({
             </p>
           )}
 
+          {reference.prompt && (
+            <div className="mt-2.5 rounded-lg bg-secondary/50 p-2.5 border border-border/60">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-foreground mb-1">
+                <div className="flex items-center gap-1.5">
+                  <Icon name="Sparkles" className="size-3.5 text-primary" />
+                  <span>Generation Prompt</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard.writeText(reference.prompt!)}
+                  className="text-muted-foreground hover:text-foreground p-0.5 transition-colors"
+                  title="Copy prompt"
+                >
+                  <Icon name="Copy" className="size-3.5" />
+                </button>
+              </div>
+              <p className="text-xs italic text-muted-foreground leading-relaxed select-text font-mono">
+                {reference.prompt}
+              </p>
+            </div>
+          )}
+
           {reference.tags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {reference.tags.map((tag) => (

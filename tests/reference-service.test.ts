@@ -42,6 +42,19 @@ describe("ReferenceService (TDD)", () => {
     assert.equal(list[0]?.id, ref.id);
   });
 
+  test("persists and updates generation prompt provenance", async () => {
+    const ref = await service.add("proj-prompt", {
+      urlOrPath: "docs/references/gen-01.png",
+      title: "Generated Tower",
+      prompt: "Tilt-shift macro diorama of miniature cozy steampunk tower, 8k",
+    });
+
+    assert.equal(ref.prompt, "Tilt-shift macro diorama of miniature cozy steampunk tower, 8k");
+
+    const fetched = await service.get("proj-prompt", ref.id);
+    assert.equal(fetched?.prompt, "Tilt-shift macro diorama of miniature cozy steampunk tower, 8k");
+  });
+
   test("prevents duplicate references on add (AP-035 Idempotency)", async () => {
     const ref1 = await service.add("proj-1", {
       urlOrPath: "https://example.com/assets/same-image.png",

@@ -24,8 +24,8 @@ When adding references for the user, ALWAYS include the `--open` flag (or pass `
 # Add a reference from web or local file and automatically open the panel:
 bb references add "https://images.unsplash.com/photo-..." --title "Dark Dashboard UI" --tags "ui,dark-mode,dashboard" --open
 
-# Add local project image:
-bb references add "docs/references/hero.png" --title "Hero Section" --tags "landing,hero" --open
+# Add local generated image with prompt:
+bb references add "docs/references/hero.png" --title "Steampunk Tower" --prompt "Tilt-shift macro diorama of miniature steampunk tower" --open
 
 # List project references:
 bb references list
@@ -46,8 +46,11 @@ bb references list --json
 ## Agent Tool
 
 The plugin registers native agent tools:
-- `references_add({ urlOrPath, title, tags, notes, open: true })`
+- `references_add({ urlOrPath, title, tags, notes, prompt, open: true })`
 - `references_list({ tag, query })`
+
+### Rule for Generated Images
+Whenever generating images with `generate_image`, ALWAYS pass the exact prompt to `references_add({ prompt: "..." })` so the generation prompt provenance is permanently preserved and visible in the card and lightbox with a one-click copy button.
 
 ## Inline Chat Previews & Hyperlinks
 

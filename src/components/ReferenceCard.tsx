@@ -190,27 +190,29 @@ export const ReferenceCard = memo(function ReferenceCard({
         </div>
 
         {reference.notes && (
-          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground line-clamp-2">
+          <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground whitespace-pre-wrap">
             {reference.notes}
           </p>
         )}
 
-        {/* Tags */}
-        {reference.tags.length > 0 && (
-          <div className="mt-2.5 flex flex-wrap gap-1">
-            {reference.tags.map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onTagClick?.(tag);
-                }}
-                className="rounded-full bg-secondary/70 px-2 py-0.5 text-[10px] font-medium text-secondary-foreground transition-colors hover:bg-secondary hover:text-primary"
-              >
-                #{tag}
-              </button>
-            ))}
+        {/* Generation Prompt (if generated image) */}
+        {reference.prompt && (
+          <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-secondary/50 p-2 text-[10px] text-muted-foreground border border-border/50">
+            <Icon name="Sparkles" className="size-3 text-primary shrink-0 mt-0.5" />
+            <span className="flex-1 italic leading-relaxed select-text" title={reference.prompt}>
+              {reference.prompt}
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(reference.prompt!);
+              }}
+              className="text-muted-foreground hover:text-foreground shrink-0 ml-1 p-0.5 transition-colors"
+              title="Copy generation prompt"
+            >
+              <Icon name="Copy" className="size-3" />
+            </button>
           </div>
         )}
       </div>

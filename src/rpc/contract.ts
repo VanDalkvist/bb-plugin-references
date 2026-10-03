@@ -31,6 +31,7 @@ export const rpcContract = defineRpcContract({
       kind: z.enum(["image", "website", "github", "doc"]).nullable().optional(),
       tags: z.array(z.string()).nullable().optional(),
       notes: z.string().nullable().optional(),
+      prompt: z.string().nullable().optional(),
       previewUrl: z.string().nullable().optional(),
       faviconUrl: z.string().nullable().optional(),
       domain: z.string().nullable().optional(),

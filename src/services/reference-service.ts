@@ -93,6 +93,8 @@ export class ReferenceService {
     }
     const tags = this.normalizeTags(rawTags);
 
+    const prompt = input.prompt !== undefined ? (input.prompt?.trim() || null) : null;
+
     const notes =
       input.notes !== undefined
         ? (input.notes?.trim() || null)
@@ -118,6 +120,7 @@ export class ReferenceService {
         title: input.title?.trim() || current.title || title,
         tags: tags.length > 0 ? tags : current.tags,
         notes: notes ?? current.notes,
+        prompt: prompt ?? current.prompt ?? null,
         previewUrl: previewUrl ?? current.previewUrl,
         faviconUrl: faviconUrl ?? current.faviconUrl,
         domain: domain ?? current.domain ?? null,
@@ -140,6 +143,7 @@ export class ReferenceService {
       tags,
       addedAt: new Date().toISOString(),
       notes,
+      prompt,
       previewUrl,
       faviconUrl,
       domain: domain ?? null,
@@ -179,11 +183,12 @@ export class ReferenceService {
       result = result.filter((ref) => {
         const titleMatch = ref.title.toLowerCase().includes(q);
         const notesMatch = ref.notes?.toLowerCase().includes(q) ?? false;
+        const promptMatch = ref.prompt?.toLowerCase().includes(q) ?? false;
         const urlMatch = ref.urlOrPath.toLowerCase().includes(q);
         const tagMatch = ref.tags.some((t) => t.toLowerCase().includes(q));
         const projectMatch = ref.projectId.toLowerCase().includes(q);
         const domainMatch = ref.domain?.toLowerCase().includes(q) ?? false;
-        return titleMatch || notesMatch || urlMatch || tagMatch || projectMatch || domainMatch;
+        return titleMatch || notesMatch || promptMatch || urlMatch || tagMatch || projectMatch || domainMatch;
       });
     }
 
@@ -285,6 +290,7 @@ export class ReferenceService {
       urlOrPath: patch.urlOrPath !== undefined ? (patch.urlOrPath?.trim() || current.urlOrPath) : current.urlOrPath,
       tags: patch.tags !== undefined ? this.normalizeTags(patch.tags || undefined) : current.tags,
       notes: patch.notes !== undefined ? (patch.notes?.trim() || null) : current.notes,
+      prompt: patch.prompt !== undefined ? (patch.prompt?.trim() || null) : (current.prompt ?? null),
       previewUrl: patch.previewUrl !== undefined ? patch.previewUrl : current.previewUrl,
       faviconUrl: patch.faviconUrl !== undefined ? patch.faviconUrl : current.faviconUrl,
       domain: patch.domain !== undefined ? patch.domain : current.domain,

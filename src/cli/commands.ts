@@ -11,7 +11,7 @@ export type RealtimePublisher = (channel: string, payload: unknown) => void;
 
 export const CLI_USAGE = `Usage:
   bb references list [--project <id>] [--tag <tag>] [--search <query>] [--json]
-  bb references add <url_or_path> [--title <title>] [--tags <t1,t2>] [--notes <notes>] [--source <source>] [--project <id>] [--open] [--json]
+  bb references add <url_or_path> [--title <title>] [--tags <t1,t2>] [--notes <notes>] [--prompt <prompt>] [--source <source>] [--project <id>] [--open] [--json]
   bb references remove <id> [--project <id>] [--json]
   bb references open [--project <id>] [--id <ref-id>] [--json]
   bb references tags [--project <id>] [--json]
@@ -20,7 +20,8 @@ export const CLI_USAGE = `Usage:
 function formatReference(ref: Reference): string {
   const tagsStr = ref.tags.length > 0 ? ` [${ref.tags.join(", ")}]` : "";
   const notesStr = ref.notes ? ` — "${ref.notes}"` : "";
-  return `• [${ref.id}] ${ref.title}${tagsStr} (${ref.urlOrPath})${notesStr}`;
+  const promptStr = ref.prompt ? ` [prompt: "${ref.prompt}"]` : "";
+  return `• [${ref.id}] ${ref.title}${tagsStr} (${ref.urlOrPath})${notesStr}${promptStr}`;
 }
 
 export async function handleCliCommand(
@@ -57,6 +58,7 @@ export async function handleCliCommand(
       arg === "--title" ||
       arg === "--tags" ||
       arg === "--notes" ||
+      arg === "--prompt" ||
       arg === "--source" ||
       arg === "--id"
     ) {
@@ -109,6 +111,7 @@ export async function handleCliCommand(
       const rawTags = getOpt("--tags");
       const tags = rawTags ? rawTags.split(",").map((t) => t.trim()).filter(Boolean) : undefined;
       const notes = getOpt("--notes");
+      const prompt = getOpt("--prompt");
       const source = getOpt("--source") || "cli";
 
       const ref = await service.add(projectId, {
@@ -116,6 +119,7 @@ export async function handleCliCommand(
         title,
         tags,
         notes,
+        prompt,
         source,
       });
 
