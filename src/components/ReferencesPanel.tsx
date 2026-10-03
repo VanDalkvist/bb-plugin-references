@@ -1,14 +1,17 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRpc, useRealtime, useBbContext } from "@get-bb/plugin-sdk/app";
 import type { ReferencesRpcContract } from "../rpc/contract.ts";
-import type { Reference, TagInfo, CreateReferenceInput } from "../types/schema.ts";
+import type { Reference, TagInfo, CreateReferenceInput, ProjectSummary } from "../types/schema.ts";
 import { ReferenceCard } from "./ReferenceCard.tsx";
 import { ReferenceLightbox } from "./ReferenceLightbox.tsx";
+import { ProjectsGridView } from "./ProjectsGridView.tsx";
 import { AddReferenceModal } from "./AddReferenceModal.tsx";
 import { Icon } from "../../components/ui/icon.tsx";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
 import { cn } from "../../lib/utils.ts";
+
+const VIEW_MODE_KEY = "bb:references:viewMode";
 
 export interface ReferencesPanelProps {
   threadId?: string;
@@ -18,9 +21,21 @@ export interface ReferencesPanelProps {
 export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
   const rpc = useRpc<ReferencesRpcContract>();
   const ctx = useBbContext();
-  const projectId = ctx?.projectId || "default";
+
+  // If user is inside a specific project, default to it; otherwise null (All Projects)
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => ctx?.projectId || null);
+
+  // View mode when viewing All Projects: 'projects' (folder grid) vs 'feed' (all images)
+  const [viewMode, setViewMode] = useState<"projects" | "feed">(() => {
+    try {
+      return (localStorage.getItem(VIEW_MODE_KEY) as "projects" | "feed") || "projects";
+    } catch {
+      return "projects";
+    }
+  });
 
   const [references, setReferences] = useState<Reference[]>([]);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [tags, setTags] = useState<TagInfo[]>([]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,23 +45,34 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
   const [selectedReference, setSelectedReference] = useState<Reference | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Fetch references and tags
+  const handleSetViewMode = useCallback((mode: "projects" | "feed") => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(VIEW_MODE_KEY, mode);
+    } catch {}
+  }, []);
+
+  // Fetch references and projects
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const [refsRes, tagsRes] = await Promise.all([
+      const [refsRes, tagsRes, projectsRes] = await Promise.all([
         rpc.call("references_list", {
-          projectId,
+          projectId: selectedProjectId ?? null,
           tag: selectedTag ?? null,
           query: searchQuery.trim() ? searchQuery.trim() : null,
         }),
-        rpc.call("references_tags", { projectId }),
+        rpc.call("references_tags", {
+          projectId: selectedProjectId ?? null,
+        }),
+        rpc.call("projects_list", null),
       ]);
 
       setReferences(refsRes.references);
       setTags(tagsRes.tags);
+      setProjects(projectsRes.projects);
 
       // If initialSelectedId was passed, open it in lightbox
       if (initialSelectedId) {
@@ -60,7 +86,7 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [rpc, projectId, selectedTag, searchQuery, initialSelectedId]);
+  }, [rpc, selectedProjectId, selectedTag, searchQuery, initialSelectedId]);
 
   useEffect(() => {
     fetchData();
@@ -73,22 +99,25 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
 
   useRealtime("references-open", (payload: unknown) => {
     const data = payload as { projectId?: string; referenceId?: string };
-    if (!data.projectId || data.projectId === projectId) {
+    if (!data.projectId || data.projectId === selectedProjectId || !selectedProjectId) {
       fetchData();
       if (data.referenceId) {
-        rpc.call("references_get", { projectId, id: data.referenceId }).then((res) => {
-          if (res.reference) {
-            setSelectedReference(res.reference);
-          }
-        }).catch(() => {});
+        rpc.call("references_get", { projectId: data.projectId || selectedProjectId || "default", id: data.referenceId })
+          .then((res) => {
+            if (res.reference) {
+              setSelectedReference(res.reference);
+            }
+          })
+          .catch(() => {});
       }
     }
   });
 
   const handleAdd = useCallback(
     async (input: CreateReferenceInput) => {
+      const pid = selectedProjectId || ctx?.projectId || "default";
       const newRef = await rpc.call("references_add", {
-        projectId,
+        projectId: pid,
         urlOrPath: input.urlOrPath,
         title: input.title ?? null,
         tags: input.tags ?? null,
@@ -96,45 +125,125 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
         source: input.source ?? null,
         aspectRatio: input.aspectRatio ?? null,
       });
+
       setReferences((prev) => [newRef, ...prev]);
-      // Also refresh tags
-      rpc.call("references_tags", { projectId }).then((res) => setTags(res.tags)).catch(() => {});
+      rpc.call("references_tags", { projectId: selectedProjectId ?? null })
+        .then((res) => setTags(res.tags))
+        .catch(() => {});
+      rpc.call("projects_list", null)
+        .then((res) => setProjects(res.projects))
+        .catch(() => {});
     },
-    [rpc, projectId]
+    [rpc, selectedProjectId, ctx?.projectId]
   );
 
   const handleRemove = useCallback(
     async (id: string) => {
       try {
-        await rpc.call("references_remove", { projectId, id });
+        const ref = references.find((r) => r.id === id);
+        const pid = ref?.projectId || selectedProjectId || "default";
+        await rpc.call("references_remove", { projectId: pid, id });
         setReferences((prev) => prev.filter((r) => r.id !== id));
         if (selectedReference?.id === id) {
           setSelectedReference(null);
         }
-        rpc.call("references_tags", { projectId }).then((res) => setTags(res.tags)).catch(() => {});
+        rpc.call("references_tags", { projectId: selectedProjectId ?? null })
+          .then((res) => setTags(res.tags))
+          .catch(() => {});
+        rpc.call("projects_list", null)
+          .then((res) => setProjects(res.projects))
+          .catch(() => {});
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to delete reference");
       }
     },
-    [rpc, projectId, selectedReference]
+    [rpc, references, selectedProjectId, selectedReference]
   );
+
+  // Filter projects by search query if in projects view
+  const filteredProjects = useMemo(() => {
+    if (!searchQuery.trim()) return projects;
+    const q = searchQuery.trim().toLowerCase();
+    return projects.filter((p) => p.name.toLowerCase().includes(q));
+  }, [projects, searchQuery]);
+
+  const isGlobalView = selectedProjectId === null;
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
       {/* Top Header / Toolbar */}
       <div className="flex flex-col gap-2.5 border-b border-border/70 bg-card/60 p-3 backdrop-blur-sm">
+        {/* Navigation Breadcrumb & Actions */}
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Icon name="Images" className="size-4 text-primary" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Project References
-            </span>
-            <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
-              {references.length}
-            </span>
+          <div className="flex items-center gap-1.5 overflow-hidden text-xs">
+            {isGlobalView ? (
+              <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                <Icon name="Images" className="size-4 text-primary shrink-0" />
+                <span>All Projects</span>
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
+                  {references.length}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedProjectId(null);
+                    setSelectedTag(null);
+                  }}
+                  className="flex items-center gap-1 font-medium text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                >
+                  <Icon name="ArrowLeft" className="size-3.5" />
+                  <span>All Projects</span>
+                </button>
+                <span className="text-muted-foreground/60">/</span>
+                <div className="flex items-center gap-1 font-semibold text-foreground truncate">
+                  <Icon name="Folder" className="size-3.5 text-primary shrink-0" />
+                  <span className="truncate">{selectedProjectId}</span>
+                  <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground shrink-0">
+                    {references.length}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* View Mode Toggle (only when in All Projects) */}
+            {isGlobalView && (
+              <div className="flex items-center rounded-lg border border-border bg-background/80 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleSetViewMode("projects")}
+                  className={cn(
+                    "flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                    viewMode === "projects"
+                      ? "bg-secondary text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  title="Projects list view"
+                >
+                  <Icon name="Folder" className="size-3" />
+                  <span className="hidden sm:inline">Projects</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetViewMode("feed")}
+                  className={cn(
+                    "flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                    viewMode === "feed"
+                      ? "bg-secondary text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  title="All references feed"
+                >
+                  <Icon name="LayoutGrid" className="size-3" />
+                  <span className="hidden sm:inline">All</span>
+                </button>
+              </div>
+            )}
+
             <Button
               size="icon"
               variant="ghost"
@@ -165,7 +274,11 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by title, tag, notes..."
+            placeholder={
+              isGlobalView && viewMode === "projects"
+                ? "Search projects..."
+                : "Search references by title, tag, notes..."
+            }
             className="h-7 pl-8 pr-7 text-xs bg-background/80"
           />
           {searchQuery && (
@@ -179,8 +292,8 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
           )}
         </div>
 
-        {/* Tag Filters Row */}
-        {tags.length > 0 && (
+        {/* Tag Filters Row (only in feed mode or specific project mode) */}
+        {(!isGlobalView || viewMode === "feed") && tags.length > 0 && (
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-[11px]">
             <button
               type="button"
@@ -227,7 +340,7 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
           </div>
         )}
 
-        {loading && references.length === 0 ? (
+        {loading && references.length === 0 && projects.length === 0 ? (
           /* Skeletons */
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[1, 2, 3, 4].map((i) => (
@@ -241,6 +354,15 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
               </div>
             ))}
           </div>
+        ) : isGlobalView && viewMode === "projects" ? (
+          /* Projects Folders View */
+          <ProjectsGridView
+            projects={filteredProjects}
+            onSelectProject={(id) => {
+              setSelectedProjectId(id);
+              setSelectedTag(null);
+            }}
+          />
         ) : references.length === 0 ? (
           /* Empty State */
           <div className="flex h-full min-h-[300px] flex-col items-center justify-center p-6 text-center text-muted-foreground border border-dashed border-border/70 rounded-2xl bg-card/20">
@@ -272,14 +394,19 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
             </div>
           </div>
         ) : (
-          /* References Grid */
+          /* References Grid Feed */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {references.map((ref) => (
               <ReferenceCard
                 key={ref.id}
                 reference={ref}
+                showProjectBadge={isGlobalView}
                 onSelect={setSelectedReference}
                 onTagClick={setSelectedTag}
+                onProjectClick={(id) => {
+                  setSelectedProjectId(id);
+                  setSelectedTag(null);
+                }}
                 onRemove={handleRemove}
               />
             ))}
@@ -287,11 +414,18 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
         )}
       </div>
 
-      {/* Lightbox / Zoom Modal */}
+      {/* Lightbox / Zoom Modal with Next/Prev Arrow Navigation */}
       <ReferenceLightbox
         reference={selectedReference}
+        references={references}
         onClose={() => setSelectedReference(null)}
+        onSelectReference={setSelectedReference}
         onTagClick={(tag) => setSelectedTag(tag)}
+        onProjectClick={(id) => {
+          setSelectedReference(null);
+          setSelectedProjectId(id);
+          setSelectedTag(null);
+        }}
       />
 
       {/* Add Reference Modal */}

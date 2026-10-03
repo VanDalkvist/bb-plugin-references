@@ -1,11 +1,6 @@
 import { defineRpcContract } from "@get-bb/plugin-sdk";
 import { z } from "zod";
-import { referenceSchema } from "../types/schema.ts";
-
-export const tagInfoSchema = z.object({
-  name: z.string(),
-  count: z.number(),
-});
+import { referenceSchema, tagInfoSchema, projectSummarySchema } from "../types/schema.ts";
 
 export const rpcContract = defineRpcContract({
   references_list: {
@@ -66,6 +61,12 @@ export const rpcContract = defineRpcContract({
     }),
     output: z.object({
       ok: z.boolean(),
+    }),
+  },
+  projects_list: {
+    input: z.null().optional(),
+    output: z.object({
+      projects: z.array(projectSummarySchema),
     }),
   },
 });

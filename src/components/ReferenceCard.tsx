@@ -7,15 +7,19 @@ import { cn } from "../../lib/utils.ts";
 
 export interface ReferenceCardProps {
   reference: Reference;
+  showProjectBadge?: boolean;
   onSelect: (reference: Reference) => void;
   onTagClick?: (tag: string) => void;
+  onProjectClick?: (projectId: string) => void;
   onRemove: (id: string) => void;
 }
 
 export const ReferenceCard = memo(function ReferenceCard({
   reference,
+  showProjectBadge = false,
   onSelect,
   onTagClick,
+  onProjectClick,
   onRemove,
 }: ReferenceCardProps) {
   const [imgError, setImgError] = useState(false);
@@ -76,6 +80,22 @@ export const ReferenceCard = memo(function ReferenceCard({
             <span className="text-xs font-medium line-clamp-1">{reference.title}</span>
             <span className="text-[10px] opacity-70">Image unavailable</span>
           </div>
+        )}
+
+        {/* Project Badge (for All References view) */}
+        {showProjectBadge && reference.projectId && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onProjectClick?.(reference.projectId);
+            }}
+            className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded bg-black/75 px-2 py-0.5 text-[10px] font-medium text-white/95 backdrop-blur-sm hover:bg-primary hover:text-primary-foreground transition-colors"
+            title={`Filter by project "${reference.projectId}"`}
+          >
+            <Icon name="Folder" className="size-3" />
+            <span>{reference.projectId}</span>
+          </button>
         )}
 
         {/* Hover Action Overlay */}

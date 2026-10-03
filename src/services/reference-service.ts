@@ -1,6 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { basename } from "node:path";
-import type { Reference, CreateReferenceInput, ReferenceFilter, TagInfo } from "../types/schema.ts";
+import type {
+  Reference,
+  CreateReferenceInput,
+  ReferenceFilter,
+  TagInfo,
+  ProjectSummary,
+} from "../types/schema.ts";
 import type { ReferenceStorage } from "../storage/reference-storage.ts";
 
 export class ReferenceService {
@@ -42,7 +48,7 @@ export class ReferenceService {
   async add(projectId: string, input: CreateReferenceInput): Promise<Reference> {
     const safeProjectId = projectId.trim() || "default";
     const title = input.title?.trim() || this.deriveTitle(input.urlOrPath);
-    const tags = this.normalizeTags(input.tags);
+    const tags = this.normalizeTags(input.tags || undefined);
 
     const ref: Reference = {
       id: randomUUID().slice(0, 8),
@@ -62,9 +68,11 @@ export class ReferenceService {
     return ref;
   }
 
-  async list(projectId: string, filter?: ReferenceFilter): Promise<Reference[]> {
-    const safeProjectId = projectId.trim() || "default";
-    const refs = await this.storage.getReferences(safeProjectId);
+  async list(projectId?: string | null, filter?: ReferenceFilter): Promise<Reference[]> {
+    const isAll = !projectId || projectId.trim() === "" || projectId.trim() === "all";
+    const refs = isAll
+      ? await this.storage.getAllReferences()
+      : await this.storage.getReferences(projectId.trim());
 
     if (!filter) {
       return refs;
@@ -86,11 +94,39 @@ export class ReferenceService {
         const notesMatch = ref.notes?.toLowerCase().includes(q) ?? false;
         const urlMatch = ref.urlOrPath.toLowerCase().includes(q);
         const tagMatch = ref.tags.some((t) => t.toLowerCase().includes(q));
-        return titleMatch || notesMatch || urlMatch || tagMatch;
+        const projectMatch = ref.projectId.toLowerCase().includes(q);
+        return titleMatch || notesMatch || urlMatch || tagMatch || projectMatch;
       });
     }
 
     return result;
+  }
+
+  async listProjects(): Promise<ProjectSummary[]> {
+    const ids = await this.storage.listProjectIds();
+    const summaries: ProjectSummary[] = await Promise.all(
+      ids.map(async (id) => {
+        const refs = await this.storage.getReferences(id);
+        const previewUrls = refs
+          .slice(0, 4)
+          .map((r) => r.urlOrPath);
+
+        return {
+          id,
+          name: id,
+          count: refs.length,
+          previewUrls,
+          lastUpdatedAt: refs[0]?.addedAt || null,
+        };
+      })
+    );
+
+    // Sort by last updated descending, then by count descending
+    return summaries.sort((a, b) => {
+      const timeA = a.lastUpdatedAt ? new Date(a.lastUpdatedAt).getTime() : 0;
+      const timeB = b.lastUpdatedAt ? new Date(b.lastUpdatedAt).getTime() : 0;
+      return timeB - timeA || b.count - a.count;
+    });
   }
 
   async get(projectId: string, id: string): Promise<Reference | null> {
@@ -140,9 +176,12 @@ export class ReferenceService {
     return updated;
   }
 
-  async listTags(projectId: string): Promise<TagInfo[]> {
-    const safeProjectId = projectId.trim() || "default";
-    const refs = await this.storage.getReferences(safeProjectId);
+  async listTags(projectId?: string | null): Promise<TagInfo[]> {
+    const isAll = !projectId || projectId.trim() === "" || projectId.trim() === "all";
+    const refs = isAll
+      ? await this.storage.getAllReferences()
+      : await this.storage.getReferences(projectId.trim());
+
     const map = new Map<string, number>();
 
     for (const ref of refs) {

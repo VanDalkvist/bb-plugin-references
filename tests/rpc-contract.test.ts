@@ -14,6 +14,9 @@ describe("RPC Contract (AP-026 DTO Boundaries)", () => {
     const empty = rpcContract.references_list.input.safeParse({});
     assert.equal(empty.success, true);
 
+    const withNull = rpcContract.references_list.input.safeParse(null);
+    assert.equal(withNull.success, true);
+
     const invalid = rpcContract.references_list.input.safeParse({
       projectId: 12345, // should be string
     });
@@ -41,6 +44,11 @@ describe("RPC Contract (AP-026 DTO Boundaries)", () => {
       threadId: "thr-abc",
       referenceId: "ref-456",
     });
+    assert.equal(valid.success, true);
+  });
+
+  test("projects_list schema accepts null or empty input", () => {
+    const valid = rpcContract.projects_list.input.safeParse(null);
     assert.equal(valid.success, true);
   });
 });

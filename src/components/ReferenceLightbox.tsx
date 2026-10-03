@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Reference } from "../types/schema.ts";
 import { resolveImageUrl, isWebUrl } from "../utils/image-url.ts";
 import { Icon } from "../../components/ui/icon.tsx";
@@ -7,17 +7,51 @@ import { cn } from "../../lib/utils.ts";
 
 export interface ReferenceLightboxProps {
   reference: Reference | null;
+  references?: Reference[];
   onClose: () => void;
+  onSelectReference?: (reference: Reference) => void;
   onTagClick?: (tag: string) => void;
+  onProjectClick?: (projectId: string) => void;
 }
 
 export function ReferenceLightbox({
   reference,
+  references = [],
   onClose,
+  onSelectReference,
   onTagClick,
+  onProjectClick,
 }: ReferenceLightboxProps) {
   const [scale, setScale] = useState(1);
   const [copied, setCopied] = useState(false);
+
+  // Compute current index in references array
+  const currentIndex = useMemo(() => {
+    if (!reference || references.length === 0) return -1;
+    return references.findIndex((r) => r.id === reference.id);
+  }, [reference, references]);
+
+  const hasMultiple = references.length > 1 && currentIndex !== -1;
+
+  const handlePrev = useCallback(() => {
+    if (!hasMultiple || !onSelectReference) return;
+    const prevIndex = (currentIndex - 1 + references.length) % references.length;
+    const prevRef = references[prevIndex];
+    if (prevRef) {
+      setScale(1);
+      onSelectReference(prevRef);
+    }
+  }, [hasMultiple, currentIndex, references, onSelectReference]);
+
+  const handleNext = useCallback(() => {
+    if (!hasMultiple || !onSelectReference) return;
+    const nextIndex = (currentIndex + 1) % references.length;
+    const nextRef = references[nextIndex];
+    if (nextRef) {
+      setScale(1);
+      onSelectReference(nextRef);
+    }
+  }, [hasMultiple, currentIndex, references, onSelectReference]);
 
   useEffect(() => {
     // Reset zoom when reference changes
@@ -30,6 +64,12 @@ export function ReferenceLightbox({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        handlePrev();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        handleNext();
       } else if (e.key === "+" || e.key === "=") {
         setScale((prev) => Math.min(prev + 0.25, 3));
       } else if (e.key === "-") {
@@ -41,7 +81,7 @@ export function ReferenceLightbox({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [reference, onClose]);
+  }, [reference, onClose, handlePrev, handleNext]);
 
   const handleCopy = useCallback(() => {
     if (!reference) return;
@@ -57,7 +97,7 @@ export function ReferenceLightbox({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-150"
       onClick={onClose}
     >
       {/* Lightbox Container */}
@@ -68,10 +108,26 @@ export function ReferenceLightbox({
         {/* Top Header */}
         <div className="flex items-center justify-between border-b border-border/60 bg-card/80 px-4 py-3 backdrop-blur-sm">
           <div className="flex items-center gap-2 overflow-hidden">
-            <h3 className="text-sm font-semibold text-foreground truncate">
+            <h3 className="text-sm font-semibold text-foreground truncate max-w-sm">
               {reference.title}
             </h3>
-            {reference.source && (
+
+            {reference.projectId && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onProjectClick?.(reference.projectId);
+                }}
+                className="flex items-center gap-1 rounded bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground hover:bg-secondary/80 hover:text-primary transition-colors"
+                title={`Project: ${reference.projectId}`}
+              >
+                <Icon name="Folder" className="size-3" />
+                <span>{reference.projectId}</span>
+              </button>
+            )}
+
+            {reference.source && reference.source !== "manual" && (
               <span className="rounded bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
                 {reference.source}
               </span>
@@ -80,6 +136,33 @@ export function ReferenceLightbox({
 
           {/* Controls */}
           <div className="flex items-center gap-1.5">
+            {/* Position indicator */}
+            {hasMultiple && (
+              <div className="flex items-center gap-1 mr-2 text-xs text-muted-foreground font-mono">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-7"
+                  onClick={handlePrev}
+                  title="Previous image (←)"
+                >
+                  <Icon name="ChevronLeft" className="size-4" />
+                </Button>
+                <span>
+                  {currentIndex + 1} / {references.length}
+                </span>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-7"
+                  onClick={handleNext}
+                  title="Next image (→)"
+                >
+                  <Icon name="ChevronRight" className="size-4" />
+                </Button>
+              </div>
+            )}
+
             {/* Zoom Controls */}
             <Button
               size="icon"
@@ -152,8 +235,20 @@ export function ReferenceLightbox({
           </div>
         </div>
 
-        {/* Image Preview Canvas */}
+        {/* Image Preview Canvas with Floating Left/Right Nav Arrows */}
         <div className="relative flex flex-1 items-center justify-center overflow-auto bg-black/40 p-4">
+          {/* Floating Left Arrow */}
+          {hasMultiple && (
+            <button
+              type="button"
+              onClick={handlePrev}
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex size-10 items-center justify-center rounded-full bg-black/60 text-white/90 shadow-lg backdrop-blur-md transition-all hover:bg-black/90 hover:scale-110 active:scale-95"
+              title="Previous (Arrow Left)"
+            >
+              <Icon name="ChevronLeft" className="size-6" />
+            </button>
+          )}
+
           <img
             src={imgSrc}
             alt={reference.title}
@@ -164,6 +259,18 @@ export function ReferenceLightbox({
             }}
             className="max-h-[65vh] max-w-full rounded-lg object-contain shadow-md"
           />
+
+          {/* Floating Right Arrow */}
+          {hasMultiple && (
+            <button
+              type="button"
+              onClick={handleNext}
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-10 flex size-10 items-center justify-center rounded-full bg-black/60 text-white/90 shadow-lg backdrop-blur-md transition-all hover:bg-black/90 hover:scale-110 active:scale-95"
+              title="Next (Arrow Right)"
+            >
+              <Icon name="ChevronRight" className="size-6" />
+            </button>
+          )}
         </div>
 
         {/* Footer Details */}

@@ -53,7 +53,7 @@ describe("ReferenceService (TDD)", () => {
     assert.equal(ref.urlOrPath, "docs/references/hero.png");
   });
 
-  test("enforces project isolation (AP-041)", async () => {
+  test("enforces project isolation when querying a specific project (AP-041)", async () => {
     await service.add("proj-1", {
       urlOrPath: "https://example.com/proj1.png",
       title: "Project 1 Ref",
@@ -71,6 +71,57 @@ describe("ReferenceService (TDD)", () => {
 
     assert.equal(listProj2.length, 1);
     assert.equal(listProj2[0]?.title, "Project 2 Ref");
+  });
+
+  test("returns all references across all projects when projectId is null or 'all'", async () => {
+    await service.add("proj-1", {
+      urlOrPath: "https://example.com/proj1.png",
+      title: "Project 1 Ref",
+      tags: ["tag1"],
+    });
+    await service.add("proj-2", {
+      urlOrPath: "https://example.com/proj2.png",
+      title: "Project 2 Ref",
+      tags: ["tag2"],
+    });
+
+    const allRefsNull = await service.list(null);
+    assert.equal(allRefsNull.length, 2);
+
+    const allRefsAll = await service.list("all");
+    assert.equal(allRefsAll.length, 2);
+
+    // Can filter across all projects
+    const filteredAll = await service.list(null, { tag: "tag2" });
+    assert.equal(filteredAll.length, 1);
+    assert.equal(filteredAll[0]?.title, "Project 2 Ref");
+  });
+
+  test("lists all projects with summaries", async () => {
+    await service.add("ferma", {
+      urlOrPath: "https://example.com/ferma-ui.png",
+      title: "Ferma Dashboard",
+    });
+    await service.add("ferma", {
+      urlOrPath: "https://example.com/ferma-lights.png",
+      title: "Ferma Lights",
+    });
+    await service.add("aura-light", {
+      urlOrPath: "https://example.com/aura.png",
+      title: "Aura Screen Sync",
+    });
+
+    const projects = await service.listProjects();
+    assert.equal(projects.length, 2);
+
+    const fermaSummary = projects.find((p) => p.id === "ferma");
+    assert.ok(fermaSummary);
+    assert.equal(fermaSummary.count, 2);
+    assert.equal(fermaSummary.previewUrls.length, 2);
+
+    const auraSummary = projects.find((p) => p.id === "aura-light");
+    assert.ok(auraSummary);
+    assert.equal(auraSummary.count, 1);
   });
 
   test("filters references by tag", async () => {
@@ -140,7 +191,7 @@ describe("ReferenceService (TDD)", () => {
     assert.equal(removeAgain, false);
   });
 
-  test("collects unique tags with counts", async () => {
+  test("collects unique tags with counts for project and globally", async () => {
     await service.add("proj-1", {
       urlOrPath: "https://example.com/1.png",
       tags: ["ui", "dark"],
@@ -149,12 +200,24 @@ describe("ReferenceService (TDD)", () => {
       urlOrPath: "https://example.com/2.png",
       tags: ["ui", "light"],
     });
+    await service.add("proj-2", {
+      urlOrPath: "https://example.com/3.png",
+      tags: ["ui", "mobile"],
+    });
 
-    const tags = await service.listTags("proj-1");
-    assert.deepEqual(tags, [
+    const tagsProj1 = await service.listTags("proj-1");
+    assert.deepEqual(tagsProj1, [
       { name: "ui", count: 2 },
       { name: "dark", count: 1 },
       { name: "light", count: 1 },
+    ]);
+
+    const globalTags = await service.listTags(null);
+    assert.deepEqual(globalTags, [
+      { name: "ui", count: 3 },
+      { name: "dark", count: 1 },
+      { name: "light", count: 1 },
+      { name: "mobile", count: 1 },
     ]);
   });
 
@@ -165,7 +228,6 @@ describe("ReferenceService (TDD)", () => {
       tags: ["durable"],
     });
 
-    // Create a new storage and service instance pointing to the same directory
     const newStorage = new FileReferenceStorage(tempDir);
     const newService = new ReferenceService(newStorage);
 

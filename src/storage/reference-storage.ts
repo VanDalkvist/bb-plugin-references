@@ -1,4 +1,4 @@
-import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
+import { readFile, writeFile, rename, mkdir, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { randomUUID } from "node:crypto";
@@ -7,6 +7,8 @@ import type { Reference } from "../types/schema.ts";
 export interface ReferenceStorage {
   getReferences(projectId: string): Promise<Reference[]>;
   saveReferences(projectId: string, references: Reference[]): Promise<void>;
+  listProjectIds(): Promise<string[]>;
+  getAllReferences(): Promise<Reference[]>;
 }
 
 export class FileReferenceStorage implements ReferenceStorage {
@@ -54,5 +56,30 @@ export class FileReferenceStorage implements ReferenceStorage {
     // Atomic write pattern: write to tmp file then atomic rename
     await writeFile(tempPath, content, "utf-8");
     await rename(tempPath, filePath);
+  }
+
+  async listProjectIds(): Promise<string[]> {
+    if (!existsSync(this.baseDir)) {
+      return [];
+    }
+    try {
+      const entries = await readdir(this.baseDir);
+      const projectIds: string[] = [];
+      for (const entry of entries) {
+        if (entry.endsWith(".json") && !entry.endsWith(".tmp")) {
+          projectIds.push(entry.slice(0, -".json".length));
+        }
+      }
+      return projectIds.sort();
+    } catch {
+      return [];
+    }
+  }
+
+  async getAllReferences(): Promise<Reference[]> {
+    const ids = await this.listProjectIds();
+    const lists = await Promise.all(ids.map((id) => this.getReferences(id)));
+    const all = lists.flat();
+    return all.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
   }
 }

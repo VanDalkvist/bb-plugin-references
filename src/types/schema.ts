@@ -32,7 +32,19 @@ export const referenceFilterSchema = z.object({
 
 export type ReferenceFilter = z.infer<typeof referenceFilterSchema>;
 
-export interface TagInfo {
-  name: string;
-  count: number;
-}
+export const tagInfoSchema = z.object({
+  name: z.string(),
+  count: z.number(),
+});
+
+export type TagInfo = z.infer<typeof tagInfoSchema>;
+
+export const projectSummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  count: z.number(),
+  previewUrls: z.array(z.string()),
+  lastUpdatedAt: z.string().nullable().optional(),
+});
+
+export type ProjectSummary = z.infer<typeof projectSummarySchema>;
