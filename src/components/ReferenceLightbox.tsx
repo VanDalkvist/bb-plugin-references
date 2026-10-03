@@ -92,8 +92,10 @@ export function ReferenceLightbox({
 
   if (!reference) return null;
 
-  const imgSrc = resolveImageUrl(reference.urlOrPath);
+  const targetImg = reference.previewUrl || reference.urlOrPath;
+  const imgSrc = resolveImageUrl(targetImg);
   const isWeb = isWebUrl(reference.urlOrPath);
+  const isWebsite = reference.kind === "website" || reference.kind === "github";
 
   return (
     <div
@@ -209,16 +211,22 @@ export function ReferenceLightbox({
               {copied ? "Copied" : "Copy"}
             </Button>
 
-            {/* External link */}
+            {/* External link or Open Website button */}
             {isWeb && (
               <a
                 href={reference.urlOrPath}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex size-8 items-center justify-center rounded-md border border-input bg-transparent text-sm hover:bg-state-hover"
+                className={cn(
+                  "inline-flex items-center justify-center rounded-md border border-input transition-colors",
+                  isWebsite
+                    ? "h-8 gap-1.5 px-3 bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary/90"
+                    : "size-8 bg-transparent text-sm hover:bg-state-hover"
+                )}
                 title="Open in new browser tab"
               >
-                <Icon name="ExternalLink" className="size-4" />
+                {isWebsite && <span>Open Website</span>}
+                <Icon name="ExternalLink" className="size-3.5" />
               </a>
             )}
 

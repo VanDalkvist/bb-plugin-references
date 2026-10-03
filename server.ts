@@ -8,6 +8,7 @@ import { rpcContract } from "./src/rpc/contract.ts";
 import { FileReferenceStorage } from "./src/storage/reference-storage.ts";
 import { ReferenceService } from "./src/services/reference-service.ts";
 import { DefaultProjectResolver } from "./src/services/project-resolver.ts";
+import { MetadataScraper } from "./src/services/metadata-scraper.ts";
 import { handleCliCommand, CLI_USAGE } from "./src/cli/commands.ts";
 import { handleImageRequest } from "./src/server/image-handler.ts";
 
@@ -41,6 +42,7 @@ export default async function plugin(bb: BbPluginApi) {
 
   const baseStorageDir = await getStorageDir();
   const storage = new FileReferenceStorage(baseStorageDir);
+  const scraper = new MetadataScraper();
   const projectResolver = new DefaultProjectResolver(async () => {
     try {
       const res = await bb.sdk.projects.list();
@@ -52,7 +54,7 @@ export default async function plugin(bb: BbPluginApi) {
       return [];
     }
   });
-  const service = new ReferenceService(storage, projectResolver);
+  const service = new ReferenceService(storage, projectResolver, scraper);
 
   const allowedRoots = [
     homedir(),
@@ -89,6 +91,7 @@ export default async function plugin(bb: BbPluginApi) {
       const pid = input?.projectId?.trim();
       const refs = await service.list(pid ? pid : null, {
         tag: input?.tag || undefined,
+        kind: input?.kind || undefined,
         query: input?.query || undefined,
       });
       return { references: refs };

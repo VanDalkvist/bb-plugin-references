@@ -260,6 +260,45 @@ describe("ReferenceService (TDD)", () => {
     ]);
   });
 
+  test("automatically enriches website references via scraper", async () => {
+    const mockScraper = {
+      async scrape(url: string) {
+        if (url.includes("linear.app")) {
+          return {
+            kind: "website" as const,
+            title: "Linear • Issue Tracking",
+            description: "Linear helps streamline software projects.",
+            previewUrl: "https://linear.app/og.png",
+            faviconUrl: "https://linear.app/favicon.svg",
+            domain: "linear.app",
+          };
+        }
+        return { kind: "image" as const };
+      },
+    };
+
+    const serviceWithScraper = new ReferenceService(storage, undefined, mockScraper as any);
+
+    const ref = await serviceWithScraper.add("proj-web", {
+      urlOrPath: "https://linear.app",
+    });
+
+    assert.equal(ref.kind, "website");
+    assert.equal(ref.title, "Linear • Issue Tracking");
+    assert.equal(ref.notes, "Linear helps streamline software projects.");
+    assert.equal(ref.previewUrl, "https://linear.app/og.png");
+    assert.equal(ref.faviconUrl, "https://linear.app/favicon.svg");
+    assert.equal(ref.domain, "linear.app");
+    assert.ok(ref.tags.includes("linear.app"), "Should tag with domain");
+
+    // Can filter by kind
+    const webOnly = await serviceWithScraper.list("proj-web", { kind: "website" });
+    assert.equal(webOnly.length, 1);
+
+    const imageOnly = await serviceWithScraper.list("proj-web", { kind: "image" });
+    assert.equal(imageOnly.length, 0);
+  });
+
   test("persists references across storage instances", async () => {
     await service.add("proj-persist", {
       urlOrPath: "https://example.com/persisted.png",

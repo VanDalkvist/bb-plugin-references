@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRpc, useRealtime, useBbContext } from "@get-bb/plugin-sdk/app";
 import type { ReferencesRpcContract } from "../rpc/contract.ts";
-import type { Reference, TagInfo, CreateReferenceInput, ProjectSummary } from "../types/schema.ts";
+import type { Reference, TagInfo, CreateReferenceInput, ProjectSummary, ReferenceKind } from "../types/schema.ts";
 import { ReferenceCard } from "./ReferenceCard.tsx";
 import { ReferenceLightbox } from "./ReferenceLightbox.tsx";
 import { ProjectsGridView } from "./ProjectsGridView.tsx";
@@ -25,7 +25,7 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
   // If user is inside a specific project, default to it; otherwise null (All Projects)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => ctx?.projectId || null);
 
-  // View mode when viewing All Projects: 'feed' (all images) vs 'projects' (folder grid)
+  // View mode when viewing All Projects: 'projects' (folder grid) vs 'feed' (all items)
   const [viewMode, setViewMode] = useState<"projects" | "feed">(() => {
     try {
       return (localStorage.getItem(VIEW_MODE_KEY) as "projects" | "feed") || "feed";
@@ -38,9 +38,14 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [tags, setTags] = useState<TagInfo[]>([]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [kindFilter, setKindFilter] = useState<"all" | ReferenceKind>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Zero-friction quick-add bar
+  const [quickInput, setQuickInput] = useState("");
+  const [isQuickAdding, setIsQuickAdding] = useState(false);
 
   const [selectedReference, setSelectedReference] = useState<Reference | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -62,6 +67,7 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
         rpc.call("references_list", {
           projectId: selectedProjectId ?? null,
           tag: selectedTag ?? null,
+          kind: kindFilter === "all" ? null : kindFilter,
           query: searchQuery.trim() ? searchQuery.trim() : null,
         }),
         rpc.call("references_tags", {
@@ -86,7 +92,7 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [rpc, selectedProjectId, selectedTag, searchQuery, initialSelectedId]);
+  }, [rpc, selectedProjectId, selectedTag, kindFilter, searchQuery, initialSelectedId]);
 
   useEffect(() => {
     fetchData();
@@ -121,13 +127,17 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
         projectId: pid,
         urlOrPath: input.urlOrPath,
         title: input.title ?? null,
+        kind: input.kind ?? null,
         tags: input.tags ?? null,
         notes: input.notes ?? null,
+        previewUrl: input.previewUrl ?? null,
+        faviconUrl: input.faviconUrl ?? null,
+        domain: input.domain ?? null,
         source: input.source ?? null,
         aspectRatio: input.aspectRatio ?? null,
       });
 
-      setReferences((prev) => [newRef, ...prev]);
+      setReferences((prev) => [newRef, ...prev.filter((r) => r.id !== newRef.id)]);
       rpc.call("references_tags", { projectId: selectedProjectId ?? null })
         .then((res) => setTags(res.tags))
         .catch(() => {});
@@ -136,6 +146,27 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
         .catch(() => {});
     },
     [rpc, selectedProjectId, ctx?.projectId]
+  );
+
+  // Quick 1-click Enter Add
+  const handleQuickAdd = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      const val = quickInput.trim();
+      if (!val || isQuickAdding) return;
+
+      try {
+        setIsQuickAdding(true);
+        setError(null);
+        await handleAdd({ urlOrPath: val });
+        setQuickInput("");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to add reference");
+      } finally {
+        setIsQuickAdding(false);
+      }
+    },
+    [quickInput, isQuickAdding, handleAdd]
   );
 
   const handleRemove = useCallback(
@@ -266,39 +297,118 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
 
             <Button
               size="sm"
-              className="h-7 gap-1 text-xs px-2.5"
+              variant="outline"
+              className="h-7 gap-1 text-xs px-2"
               onClick={() => setIsAddModalOpen(true)}
+              title="Open full add form"
             >
-              <Icon name="Plus" className="size-3.5" />
-              Add
+              <Icon name="Settings2" className="size-3.5" />
             </Button>
           </div>
         </div>
 
-        {/* Search bar */}
-        <div className="relative">
-          <Icon
-            name="Search"
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground"
-          />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={
-              isGlobalView && viewMode === "projects"
-                ? "Search projects..."
-                : "Search references by title, tag, notes..."
-            }
-            className="h-7 pl-8 pr-7 text-xs bg-background/80"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <Icon name="X" className="size-3" />
-            </button>
+        {/* Zero-friction Quick Add Bar: paste URL or path + Enter */}
+        <form onSubmit={handleQuickAdd} className="relative flex items-center gap-1.5">
+          <div className="relative flex-1">
+            <Icon
+              name="Plus"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground"
+            />
+            <Input
+              value={quickInput}
+              onChange={(e) => setQuickInput(e.target.value)}
+              placeholder="Paste website link or image path + Enter to add..."
+              disabled={isQuickAdding}
+              className="h-8 pl-8 pr-16 text-xs bg-background/90 border-border/80 focus-visible:border-primary shadow-inner"
+            />
+            {isQuickAdding && (
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-primary animate-pulse font-medium">
+                Fetching…
+              </span>
+            )}
+          </div>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={!quickInput.trim() || isQuickAdding}
+            className="h-8 px-2.5 text-xs font-semibold gap-1 shrink-0"
+          >
+            <Icon name="CornerDownLeft" className="size-3" />
+            <span>Add</span>
+          </Button>
+        </form>
+
+        {/* Search bar & Type filter */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          {/* Search input */}
+          <div className="relative flex-1">
+            <Icon
+              name="Search"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground"
+            />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={
+                isGlobalView && viewMode === "projects"
+                  ? "Search projects..."
+                  : "Search references by title, domain, notes..."
+              }
+              className="h-7 pl-8 pr-7 text-xs bg-background/80"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <Icon name="X" className="size-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Kind Filter Switch (All | Images | Websites) */}
+          {(!isGlobalView || viewMode === "feed") && (
+            <div className="flex items-center rounded-lg border border-border bg-background/80 p-0.5 shrink-0 self-start sm:self-auto text-[11px]">
+              <button
+                type="button"
+                onClick={() => setKindFilter("all")}
+                className={cn(
+                  "rounded-md px-2 py-0.5 font-medium transition-colors",
+                  kindFilter === "all"
+                    ? "bg-secondary text-foreground shadow-xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setKindFilter("image")}
+                className={cn(
+                  "flex items-center gap-1 rounded-md px-2 py-0.5 font-medium transition-colors",
+                  kindFilter === "image"
+                    ? "bg-secondary text-foreground shadow-xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon name="Images" className="size-3" />
+                <span>Images</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setKindFilter("website")}
+                className={cn(
+                  "flex items-center gap-1 rounded-md px-2 py-0.5 font-medium transition-colors",
+                  kindFilter === "website"
+                    ? "bg-secondary text-foreground shadow-xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon name="Globe" className="size-3" />
+                <span>Websites</span>
+              </button>
+            </div>
           )}
         </div>
 
@@ -315,7 +425,7 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
                   : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
               )}
             >
-              All
+              All Tags
             </button>
             {tags.map((tag) => (
               <button
@@ -384,24 +494,9 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
             </h4>
             <p className="mt-1.5 max-w-xs text-xs text-muted-foreground leading-relaxed">
               {searchQuery || selectedTag
-                ? "Try adjusting your search query or tag filter."
-                : "Ask an agent to collect visual inspiration or add images directly via CLI or button above."}
+                ? "Try adjusting your search query, kind, or tag filter."
+                : "Paste any link (website, github repo, or image) in the bar above and hit Enter!"}
             </p>
-
-            <div className="mt-4 flex flex-col gap-2 items-center">
-              <Button
-                size="sm"
-                onClick={() => setIsAddModalOpen(true)}
-                className="gap-1.5 text-xs"
-              >
-                <Icon name="Plus" className="size-3.5" />
-                Add First Reference
-              </Button>
-
-              <code className="text-[10px] text-muted-foreground/80 bg-muted/40 px-2 py-1 rounded">
-                bb references add &lt;url_or_path&gt; --open
-              </code>
-            </div>
           </div>
         ) : (
           /* References Grid Feed */
@@ -438,7 +533,7 @@ export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
         }}
       />
 
-      {/* Add Reference Modal */}
+      {/* Full Add Reference Modal */}
       <AddReferenceModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}

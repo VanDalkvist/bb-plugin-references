@@ -32,6 +32,7 @@ export function InlineReferenceDirective({ attributes }: PluginMessageDirectiveP
         setReference({
           id: "ad-hoc",
           projectId: projectAttr || ctx?.projectId || "default",
+          kind: (attributes.kind as any) || "website",
           urlOrPath: urlAttr,
           title: titleAttr || urlAttr.split("/").pop() || "Reference",
           tags: attributes.tags ? attributes.tags.split(",").map((t) => t.trim()) : [],
@@ -91,7 +92,9 @@ export function InlineReferenceDirective({ attributes }: PluginMessageDirectiveP
   );
 
   const imgSrc = useMemo(() => {
-    return reference ? resolveImageUrl(reference.urlOrPath) : "";
+    if (!reference) return "";
+    const targetImage = reference.previewUrl || reference.urlOrPath;
+    return resolveImageUrl(targetImage);
   }, [reference]);
 
   if (loading) {
@@ -176,6 +179,18 @@ export function InlineReferenceDirective({ attributes }: PluginMessageDirectiveP
 
           {/* Action buttons */}
           <div className="flex shrink-0 items-center gap-1">
+            {isWebUrl(reference.urlOrPath) && (
+              <a
+                href={reference.urlOrPath}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                title="Open site in new tab"
+              >
+                <Icon name="ExternalLink" className="size-3.5" />
+              </a>
+            )}
+
             <Button
               size="icon"
               variant="ghost"

@@ -7,6 +7,7 @@ export const rpcContract = defineRpcContract({
     input: z.object({
       projectId: z.string().nullable().optional(),
       tag: z.string().nullable().optional(),
+      kind: z.enum(["image", "website", "github", "doc"]).nullable().optional(),
       query: z.string().nullable().optional(),
     }).nullable().optional(),
     output: z.object({
@@ -27,8 +28,12 @@ export const rpcContract = defineRpcContract({
       projectId: z.string().nullable().optional(),
       urlOrPath: z.string().min(1, "URL or path cannot be empty"),
       title: z.string().nullable().optional(),
+      kind: z.enum(["image", "website", "github", "doc"]).nullable().optional(),
       tags: z.array(z.string()).nullable().optional(),
       notes: z.string().nullable().optional(),
+      previewUrl: z.string().nullable().optional(),
+      faviconUrl: z.string().nullable().optional(),
+      domain: z.string().nullable().optional(),
       source: z.string().nullable().optional(),
       aspectRatio: z.number().positive().nullable().optional(),
       open: z.boolean().nullable().optional(),

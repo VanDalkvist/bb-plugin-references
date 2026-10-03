@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { basename } from "node:path";
 import type {
   Reference,
+  ReferenceKind,
   CreateReferenceInput,
   ReferenceFilter,
   TagInfo,
@@ -9,14 +10,21 @@ import type {
 } from "../types/schema.ts";
 import type { ReferenceStorage } from "../storage/reference-storage.ts";
 import type { ProjectResolver } from "./project-resolver.ts";
+import type { MetadataScraper, ScrapedMetadata } from "./metadata-scraper.ts";
 
 export class ReferenceService {
   private storage: ReferenceStorage;
   private projectResolver?: ProjectResolver;
+  private scraper?: MetadataScraper;
 
-  constructor(storage: ReferenceStorage, projectResolver?: ProjectResolver) {
+  constructor(
+    storage: ReferenceStorage,
+    projectResolver?: ProjectResolver,
+    scraper?: MetadataScraper
+  ) {
     this.storage = storage;
     this.projectResolver = projectResolver;
+    this.scraper = scraper;
   }
 
   private deriveTitle(urlOrPath: string): string {
@@ -61,8 +69,35 @@ export class ReferenceService {
 
   async add(projectId: string, input: CreateReferenceInput): Promise<Reference> {
     const safeProjectId = await this.resolveProjectId(projectId);
-    const title = input.title?.trim() || this.deriveTitle(input.urlOrPath);
-    const tags = this.normalizeTags(input.tags || undefined);
+
+    // Auto-scrape metadata for web URLs if scraper is available
+    let scraped: ScrapedMetadata | undefined;
+    const isHttp =
+      input.urlOrPath.startsWith("http://") || input.urlOrPath.startsWith("https://");
+    if (this.scraper && isHttp) {
+      scraped = await this.scraper.scrape(input.urlOrPath);
+    }
+
+    const kind: ReferenceKind = input.kind || scraped?.kind || "image";
+    const title = input.title?.trim() || scraped?.title || this.deriveTitle(input.urlOrPath);
+    const previewUrl =
+      input.previewUrl !== undefined ? input.previewUrl : (scraped?.previewUrl ?? null);
+    const faviconUrl =
+      input.faviconUrl !== undefined ? input.faviconUrl : (scraped?.faviconUrl ?? null);
+    const domain = input.domain || scraped?.domain || undefined;
+
+    // Combine input tags with domain tag
+    const rawTags = [...(input.tags || [])];
+    if (domain && !rawTags.includes(domain)) {
+      rawTags.push(domain);
+    }
+    const tags = this.normalizeTags(rawTags);
+
+    const notes =
+      input.notes !== undefined
+        ? (input.notes?.trim() || null)
+        : (scraped?.description ? scraped.description.trim() : null);
+
     const projectName = this.projectResolver
       ? await this.projectResolver.getProjectName(safeProjectId)
       : safeProjectId;
@@ -79,9 +114,13 @@ export class ReferenceService {
       const current = existing[existingIndex]!;
       const updated: Reference = {
         ...current,
-        title: input.title?.trim() || current.title,
-        tags: input.tags ? this.normalizeTags(input.tags) : current.tags,
-        notes: input.notes !== undefined ? (input.notes?.trim() || null) : current.notes,
+        kind,
+        title: input.title?.trim() || current.title || title,
+        tags: tags.length > 0 ? tags : current.tags,
+        notes: notes ?? current.notes,
+        previewUrl: previewUrl ?? current.previewUrl,
+        faviconUrl: faviconUrl ?? current.faviconUrl,
+        domain: domain ?? current.domain,
         source: input.source?.trim() || current.source,
         aspectRatio: input.aspectRatio !== undefined ? (input.aspectRatio ?? null) : current.aspectRatio,
         projectName,
@@ -95,11 +134,15 @@ export class ReferenceService {
       id: randomUUID().slice(0, 8),
       projectId: safeProjectId,
       projectName,
+      kind,
       urlOrPath: input.urlOrPath.trim(),
       title,
       tags,
       addedAt: new Date().toISOString(),
-      notes: input.notes?.trim() || null,
+      notes,
+      previewUrl,
+      faviconUrl,
+      domain,
       source: input.source?.trim() || "manual",
       aspectRatio: input.aspectRatio ?? null,
     };
@@ -119,6 +162,11 @@ export class ReferenceService {
 
     let result = refs;
 
+    // Filter by kind (e.g. image vs website)
+    if (filter?.kind) {
+      result = result.filter((ref) => (ref.kind || "image") === filter.kind);
+    }
+
     if (filter?.tag) {
       const targetTag = filter.tag.trim().toLowerCase();
       result = result.filter((ref) =>
@@ -134,7 +182,8 @@ export class ReferenceService {
         const urlMatch = ref.urlOrPath.toLowerCase().includes(q);
         const tagMatch = ref.tags.some((t) => t.toLowerCase().includes(q));
         const projectMatch = ref.projectId.toLowerCase().includes(q);
-        return titleMatch || notesMatch || urlMatch || tagMatch || projectMatch;
+        const domainMatch = ref.domain?.toLowerCase().includes(q) ?? false;
+        return titleMatch || notesMatch || urlMatch || tagMatch || projectMatch || domainMatch;
       });
     }
 
@@ -159,7 +208,7 @@ export class ReferenceService {
         const refs = await this.storage.getReferences(id);
         const previewUrls = refs
           .slice(0, 4)
-          .map((r) => r.urlOrPath);
+          .map((r) => r.previewUrl || r.urlOrPath);
 
         const name = this.projectResolver
           ? await this.projectResolver.getProjectName(id)
@@ -231,10 +280,14 @@ export class ReferenceService {
 
     const updated: Reference = {
       ...current,
+      kind: patch.kind || current.kind,
       title: patch.title !== undefined ? (patch.title?.trim() || current.title) : current.title,
       urlOrPath: patch.urlOrPath !== undefined ? (patch.urlOrPath?.trim() || current.urlOrPath) : current.urlOrPath,
       tags: patch.tags !== undefined ? this.normalizeTags(patch.tags || undefined) : current.tags,
       notes: patch.notes !== undefined ? (patch.notes?.trim() || null) : current.notes,
+      previewUrl: patch.previewUrl !== undefined ? patch.previewUrl : current.previewUrl,
+      faviconUrl: patch.faviconUrl !== undefined ? patch.faviconUrl : current.faviconUrl,
+      domain: patch.domain !== undefined ? patch.domain : current.domain,
       source: patch.source !== undefined ? (patch.source?.trim() || current.source) : current.source,
       aspectRatio: patch.aspectRatio !== undefined ? (patch.aspectRatio ?? null) : current.aspectRatio,
       projectName,

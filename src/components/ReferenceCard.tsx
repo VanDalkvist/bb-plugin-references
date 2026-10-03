@@ -26,8 +26,11 @@ export const ReferenceCard = memo(function ReferenceCard({
   const [copied, setCopied] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const imgSrc = resolveImageUrl(reference.urlOrPath);
+  // Use previewUrl for website OG images, fallback to urlOrPath
+  const targetImage = reference.previewUrl || reference.urlOrPath;
+  const imgSrc = resolveImageUrl(targetImage);
   const isWeb = isWebUrl(reference.urlOrPath);
+  const isWebsite = reference.kind === "website" || reference.kind === "github";
 
   const handleCopy = useCallback(
     (e: React.MouseEvent) => {
@@ -64,9 +67,9 @@ export const ReferenceCard = memo(function ReferenceCard({
         "cursor-pointer transition-all duration-150 ease-out hover:border-border/80 hover:shadow-md hover:bg-card/90"
       )}
     >
-      {/* Image Preview Container */}
+      {/* Image / Website Preview Container */}
       <div className="relative aspect-video w-full overflow-hidden bg-muted/40">
-        {!imgError ? (
+        {!imgError && targetImage ? (
           <img
             src={imgSrc}
             alt={reference.title}
@@ -74,6 +77,17 @@ export const ReferenceCard = memo(function ReferenceCard({
             onError={() => setImgError(true)}
             className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
           />
+        ) : isWebsite ? (
+          /* Fallback for website without OG image: sleek stylized domain card */
+          <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center bg-gradient-to-br from-card via-secondary/20 to-muted/50 text-foreground">
+            {reference.faviconUrl ? (
+              <img src={reference.faviconUrl} alt="" className="size-8 rounded-lg mb-1.5 shadow-sm" />
+            ) : (
+              <Icon name="Globe" className="size-8 text-primary/70 mb-1.5" />
+            )}
+            <span className="text-xs font-semibold line-clamp-1">{reference.title}</span>
+            <span className="text-[10px] text-muted-foreground mt-0.5">{reference.domain || "Website"}</span>
+          </div>
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center text-muted-foreground">
             <Icon name="ImageOff" className="mb-2 size-8 opacity-40" />
@@ -98,6 +112,18 @@ export const ReferenceCard = memo(function ReferenceCard({
           </button>
         )}
 
+        {/* Domain & Favicon Pill for Websites */}
+        {reference.domain && (
+          <span className="absolute bottom-2 right-2 z-10 flex items-center gap-1 rounded bg-black/75 px-1.5 py-0.5 text-[9px] font-medium text-white/90 backdrop-blur-sm">
+            {reference.faviconUrl ? (
+              <img src={reference.faviconUrl} alt="" className="size-2.5 rounded-sm" />
+            ) : (
+              <Icon name="Globe" className="size-2.5 text-primary" />
+            )}
+            <span>{reference.domain}</span>
+          </span>
+        )}
+
         {/* Hover Action Overlay */}
         <div className="absolute inset-0 flex items-start justify-end gap-1.5 p-2 bg-gradient-to-b from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-150 group-hover:opacity-100">
           {/* Copy URL / Path */}
@@ -118,8 +144,8 @@ export const ReferenceCard = memo(function ReferenceCard({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex size-7 items-center justify-center rounded-md bg-background/80 backdrop-blur-sm text-foreground hover:bg-background"
-              title="Open link in browser"
+              className="inline-flex size-7 items-center justify-center rounded-md bg-background/80 backdrop-blur-sm text-foreground hover:bg-background hover:text-primary transition-colors"
+              title="Open site in new tab"
             >
               <Icon name="ExternalLink" className="size-3.5" />
             </a>
@@ -152,9 +178,16 @@ export const ReferenceCard = memo(function ReferenceCard({
 
       {/* Card Info */}
       <div className="flex flex-1 flex-col p-3">
-        <h4 className="text-xs font-semibold leading-snug text-foreground line-clamp-1 group-hover:text-primary">
-          {reference.title}
-        </h4>
+        <div className="flex items-start justify-between gap-1.5">
+          <h4 className="text-xs font-semibold leading-snug text-foreground line-clamp-1 group-hover:text-primary">
+            {reference.title}
+          </h4>
+          {isWebsite && (
+            <span className="shrink-0 text-muted-foreground/60 group-hover:text-primary">
+              <Icon name="ExternalLink" className="size-3" />
+            </span>
+          )}
+        </div>
 
         {reference.notes && (
           <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground line-clamp-2">
