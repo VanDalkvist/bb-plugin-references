@@ -24,7 +24,7 @@ export function ReferenceCardActions({
 }: ReferenceCardActionsProps) {
   return (
     <div className="absolute inset-0 flex items-start justify-end gap-1.5 p-2 bg-gradient-to-b from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-      {/* Toggle Pin / Камертон */}
+      {/* Toggle Pin / Anchor */}
       {onTogglePin && (
         <Button
           size="icon"
@@ -35,7 +35,7 @@ export function ReferenceCardActions({
               ? "bg-primary text-primary-foreground hover:bg-primary/90"
               : "bg-background/80 text-muted-foreground hover:text-foreground hover:bg-background"
           )}
-          title={reference.pinned ? "Снять метку Камертона" : "Закрепить как Камертон (На столе)"}
+          title={reference.pinned ? "Unpin anchor" : "Pin as aesthetic anchor"}
           onClick={onTogglePin}
         >
           <Icon name="Pin" className={cn("size-3.5", reference.pinned && "fill-current")} />

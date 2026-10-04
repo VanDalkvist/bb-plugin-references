@@ -19,7 +19,7 @@ export function FilterToggleGroup({
 }: FilterToggleGroupProps) {
   return (
     <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-      {/* Working Set ("Камертон" / "На столе") */}
+      {/* Working Set / Pinned Anchors */}
       <div className="flex items-center rounded-lg border border-border bg-background/80 p-0.5 shrink-0">
         <button
           type="button"
@@ -31,7 +31,7 @@ export function FilterToggleGroup({
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          Все
+          All
         </button>
         <button
           type="button"
@@ -42,10 +42,10 @@ export function FilterToggleGroup({
               ? "bg-primary text-primary-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground"
           )}
-          title="Фокус на стилеобразующих диорамах ('На столе')"
+          title="Focus on key aesthetic anchors"
         >
           <Icon name="Pin" className={cn("size-2.5", pinnedOnly && "fill-current")} />
-          <span>Камертон</span>
+          <span>Anchors</span>
           {pinnedCount > 0 && (
             <span
               className={cn(

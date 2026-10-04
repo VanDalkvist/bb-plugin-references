@@ -1,66 +1,81 @@
 # bb-plugin-references
 
-Панель визуальных референсов и мудбордов проекта в BB IDE с автоматическим открытием агентом.
+Visual references and moodboard panel for BB IDE projects with instant agent auto-open.
 
-## Главные возможности
+## Features
 
-- 🖼️ **Визуальный мудборд в правой панели треда:** Вкладка `References` (`app.slots.threadPanelAction`) с адаптивной сеткой карточек (Grid/Masonry), превью, тегами и заметками.
-- ⚡ **Автоматическое открытие агентом («Килер-фича»):** Когда AI-агент собирает референсы (`bb references add ... --open`), панель референсов открывается автоматически в окне BB IDE без единого клика.
-- 📁 **Проектная изоляция (Per-Project):** Референсы привязаны к конкретному `projectId` и хранятся в `~/.bb/references/<projectId>.json`.
-- 🔒 **Поддержка любых источников:** Веб-ссылки (`https://...`, Dribbble, Unsplash, Figma) и локальные файлы проекта (`docs/references/*.png`), безопасно отдаваемые через локальный HTTP-эндпоинт плагина с защитой от path traversal.
-- 🔍 **Фильтрация и поиск:** Быстрый текстовый поиск по названию, тегам и заметкам, а также фильтрация кликом по чипсам тегов.
-- 🔎 **Lightbox / Zoom:** Увеличение картинки на весь экран с масштабированием (50%–300%), просмотром заметок и копированием путей.
-- 🛠️ **CLI и Agent Tool:** Поддержка CLI `bb references ...` и нативных тулов для агентов `references_add` и `references_list`.
+- 🖼️ **Visual Moodboard in Thread Panel:** Dedicated `References` panel (`app.slots.threadPanelAction`) with responsive grid, OpenGraph link cards, tags, and design notes.
+- ⚡ **Instant Agent Auto-Open:** When an AI agent collects references (`bb references add ... --open`), the references panel automatically opens in the active BB IDE thread.
+- 📁 **Per-Project Isolation:** References are scoped to the active project (`projectId`) with a global all-projects overview.
+- 🔒 **Any Source Supported:** Seamlessly handles web URLs (Figma, Dribbble, Unsplash, repositories) and local project images, served securely via an authenticated plugin HTTP endpoint with path-traversal protection.
+- 📌 **Aesthetic Anchors:** Pin key stylistic references to the working set so they stay visible at the top of the feed and can be filtered in one click.
+- 🔍 **Search & Tag Filtering:** Instant search across titles, domains, notes, and tags with interactive filter chips.
+- 🔎 **Full-Screen Lightbox:** Detailed inspection with zoom (50%–300%), prompt provenance display, and one-click copy.
+- 🛠️ **CLI and Agent Tools:** Native CLI commands (`bb references ...`) and tools (`references_add`, `references_list`, `references_pin`).
 
-## Установка
+## Installation
 
 ```bash
-cd ~/Projects/bb-plugin-references
+bb plugin install github:VanDalkvist/bb-plugin-references
+```
+
+Or clone locally and install:
+
+```bash
+git clone https://github.com/VanDalkvist/bb-plugin-references.git
+cd bb-plugin-references
 bb plugin install .
 ```
 
-## Использование CLI
+## CLI Usage
 
 ```bash
-# Добавить референс и автоматически открыть панель в BB IDE:
+# Add a web reference and automatically open the panel in BB IDE:
 bb references add "https://images.unsplash.com/photo-..." --title "Dark Dashboard UI" --tags "ui,dark-mode,dashboard" --open
 
-# Добавить локальный файл из проекта:
-bb references add "docs/references/hero.png" --title "Hero Section" --tags "landing,hero" --open
+# Add a local image file:
+bb references add "assets/hero.png" --title "Hero Section" --tags "landing,hero" --open
 
-# Список референсов проекта:
+# List project references:
 bb references list
 
-# Фильтрация по тегу:
+# Pin a reference as active aesthetic anchor:
+bb references pin <id>
+
+# List only pinned anchor references:
+bb references list --pinned
+
+# Filter references by tag:
 bb references list --tag ui
 
-# Поиск по названию/заметкам:
+# Search by title, domain, or notes:
 bb references list --search "dashboard"
 
-# Открыть панель референсов вручную:
+# Open the panel explicitly:
 bb references open
 
-# Удалить референс:
+# Remove a reference:
 bb references remove <id>
 
-# Список тегов проекта:
+# List project tags with counts:
 bb references tags
 ```
 
-## Для AI-агентов
+## For AI Agents
 
-Плагин регистрирует скилл `skills/references/SKILL.md` и нативные инструменты:
-- `references_add({ urlOrPath, title, tags, notes, open: true })`
+The plugin registers the `skills/references/SKILL.md` skill and native tools:
+- `references_add({ urlOrPath, title, tags, notes, prompt, pinned, open: true })`
+- `references_pin({ id, pinned })`
 - `references_list({ tag, query })`
 
-Когда пользователь просит: *«Собери референсы для экрана авторизации»*, агент собирает ссылки/картинки и вызывает `bb references add ... --open`. Пользователь сразу видит результат прямо в боковой панели.
+When the user asks: *"Find inspiration for the login screen"*, the agent collects links or local images and invokes `references_add` with `open: true`. The user instantly sees the gallery open on the right side of the thread.
 
-## Тестирование и Сборка
+## Development & Testing
 
 ```bash
-# Запуск unit & e2e тестов:
+# Run unit and integration tests:
 npm test
 
-# Сборка плагина:
+# Build the plugin:
 npm run build
 ```

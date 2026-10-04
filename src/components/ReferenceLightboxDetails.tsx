@@ -158,7 +158,7 @@ export function ReferenceLightboxDetails({
             onClick={() => onTogglePin(reference.id)}
           >
             <Icon name="Pin" className={cn("size-3.5", reference.pinned && "fill-current")} />
-            <span>{reference.pinned ? "Снять метку Камертона" : "Закрепить как Камертон (На столе)"}</span>
+            <span>{reference.pinned ? "Unpin Anchor" : "Pin as Aesthetic Anchor"}</span>
           </Button>
         )}
 

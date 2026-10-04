@@ -19,12 +19,12 @@ export function registerCli(bb: BbPluginApi, service: ReferenceService): void {
       },
       {
         name: "pin",
-        summary: "Pin a reference as active aesthetic anchor ('Камертон' / 'На столе')",
+        summary: "Pin a reference as active aesthetic anchor",
         usage: "bb references pin <id> [--project <id>] [--json]",
       },
       {
         name: "unpin",
-        summary: "Unpin a reference from active anchor ('Камертон')",
+        summary: "Unpin a reference from active anchor",
         usage: "bb references unpin <id> [--project <id>] [--json]",
       },
       {

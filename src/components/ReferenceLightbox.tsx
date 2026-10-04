@@ -109,7 +109,7 @@ export function ReferenceLightbox({
             {reference.pinned && (
               <span className="flex shrink-0 items-center gap-1 rounded bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-sm">
                 <Icon name="Pin" className="size-2.5 fill-current" />
-                <span>Камертон</span>
+                <span>Anchor</span>
               </span>
             )}
 

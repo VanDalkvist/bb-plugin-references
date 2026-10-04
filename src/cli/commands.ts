@@ -20,7 +20,7 @@ export const CLI_USAGE = `Usage:
   bb references --help`;
 
 function formatReference(ref: Reference): string {
-  const pinStr = ref.pinned ? " 📌 [Камертон]" : "";
+  const pinStr = ref.pinned ? " 📌 [Pinned]" : "";
   const tagsStr = ref.tags.length > 0 ? ` [${ref.tags.join(", ")}]` : "";
   const notesStr = ref.notes ? ` — "${ref.notes}"` : "";
   const promptStr = ref.prompt ? ` [prompt: "${ref.prompt}"]` : "";
@@ -104,7 +104,7 @@ export async function handleCliCommand(
         return reply([], `No references found for project "${projectId}".`);
       }
 
-      const text = `Project: ${projectId} (${refs.length} references${pinnedFlag ? ", 📌 Камертон" : ""})\n` +
+      const text = `Project: ${projectId} (${refs.length} references${pinnedFlag ? ", 📌 Pinned" : ""})\n` +
         refs.map(formatReference).join("\n");
       return reply(refs, text);
     }
@@ -163,8 +163,8 @@ export async function handleCliCommand(
       }
 
       const msg = isPin
-        ? `📌 Reference [${id}] "${ref.title}" pinned as Камертон (На столе).`
-        : `Reference [${id}] "${ref.title}" unpinned from Камертон.`;
+        ? `📌 Reference [${id}] "${ref.title}" pinned as aesthetic anchor.`
+        : `Reference [${id}] "${ref.title}" unpinned.`;
 
       return reply({ pinned: isPin, id, projectId: ref.projectId }, msg);
     }

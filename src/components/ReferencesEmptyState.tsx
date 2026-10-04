@@ -40,9 +40,9 @@ export function ReferencesEmptyState({
         <div className="relative mb-3 flex size-12 items-center justify-center rounded-2xl bg-secondary/80 text-foreground">
           <Icon name="Pin" className="size-6 text-primary fill-current" />
         </div>
-        <h3 className="text-sm font-semibold text-foreground">Камертон пуст</h3>
+        <h3 className="text-sm font-semibold text-foreground">No pinned anchors</h3>
         <p className="mt-1 max-w-xs text-xs">
-          Закрепляйте ключевые тактильные диорамы и стилеобразующие референсы кнопкой 📌 на карточках, чтобы держать фокус «На столе».
+          Pin key visual anchors and aesthetic references to keep them focused on your desk.
         </p>
         <Button
           size="sm"
@@ -50,7 +50,7 @@ export function ReferencesEmptyState({
           className="mt-4 h-7 text-xs"
           onClick={onClearFilters}
         >
-          Показать все референсы
+          Show all references
         </Button>
       </div>
     );
@@ -88,7 +88,7 @@ export function ReferencesEmptyState({
         Paste any website link or local image above, or ask the AI agent:
       </p>
       <div className="mt-3 rounded-lg border border-border/60 bg-secondary/40 px-3 py-2 text-[11px] font-mono text-muted-foreground">
-        «Собери референсы для темной темы»
+        "Find UI references for dark mode"
       </div>
       <Button
         size="sm"

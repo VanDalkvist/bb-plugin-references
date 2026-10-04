@@ -99,11 +99,11 @@ export const ReferenceCard = memo(function ReferenceCard({
           </div>
         )}
 
-        {/* Pinned Badge (Камертон / На столе) */}
+        {/* Pinned Badge (Aesthetic Anchor) */}
         {reference.pinned && (
           <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-sm backdrop-blur-sm">
             <Icon name="Pin" className="size-2.5 fill-current" />
-            <span>Камертон</span>
+            <span>Anchor</span>
           </div>
         )}
 
