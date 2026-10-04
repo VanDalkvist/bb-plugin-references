@@ -132,11 +132,17 @@ export class MetadataScraper {
 
   private isBlockedHost(hostname: string): boolean {
     const lower = hostname.toLowerCase();
-    // Guard against cloud metadata endpoints (AP-016 SSRF protection)
+    // Guard against cloud metadata endpoints & link-local addresses (AP-016 & AP-044 SSRF protection)
     return (
       lower === "169.254.169.254" ||
+      lower.startsWith("169.254.") ||
+      lower === "100.100.100.200" ||
+      lower.startsWith("[fe80:") ||
+      lower.startsWith("fe80:") ||
       lower === "metadata.google.internal" ||
-      lower === "metadata.packet.net"
+      lower === "metadata.packet.net" ||
+      lower === "metadata.turing.com" ||
+      lower === "instance-data"
     );
   }
 

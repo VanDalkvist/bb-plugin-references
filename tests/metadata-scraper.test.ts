@@ -5,6 +5,24 @@ import { MetadataScraper } from "../src/services/metadata-scraper.ts";
 describe("MetadataScraper (TDD)", () => {
   const scraper = new MetadataScraper();
 
+  test("blocks cloud metadata and link-local addresses without outbound HTTP (AP-016 & AP-044)", async () => {
+    const meta1 = await scraper.scrape("http://169.254.169.254/latest/meta-data/");
+    assert.equal(meta1.domain, "169.254.169.254");
+    assert.equal(meta1.previewUrl, undefined);
+
+    const meta2 = await scraper.scrape("http://169.254.10.20/secret");
+    assert.equal(meta2.domain, "169.254.10.20");
+    assert.equal(meta2.previewUrl, undefined);
+
+    const meta3 = await scraper.scrape("http://metadata.google.internal/computeMetadata/v1/");
+    assert.equal(meta3.domain, "metadata.google.internal");
+    assert.equal(meta3.previewUrl, undefined);
+
+    const meta4 = await scraper.scrape("http://instance-data/latest/meta-data/");
+    assert.equal(meta4.domain, "instance-data");
+    assert.equal(meta4.previewUrl, undefined);
+  });
+
   test("identifies direct image URLs without fetching HTML", async () => {
     const meta = await scraper.scrape("https://example.com/assets/banner.png");
     assert.equal(meta.kind, "image");

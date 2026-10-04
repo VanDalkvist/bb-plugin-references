@@ -27,6 +27,20 @@ function formatReference(ref: Reference): string {
   return `• [${ref.id}]${pinStr} ${ref.title}${tagsStr} (${ref.urlOrPath})${notesStr}${promptStr}`;
 }
 
+const VALUE_OPTIONS = new Set([
+  "--project",
+  "--tag",
+  "--search",
+  "--title",
+  "--tags",
+  "--notes",
+  "--prompt",
+  "--source",
+  "--id",
+]);
+
+const BOOLEAN_FLAGS = new Set(["--json", "--open", "--pinned"]);
+
 export async function handleCliCommand(
   argv: string[],
   service: ReferenceService,
@@ -37,7 +51,6 @@ export async function handleCliCommand(
   const openFlag = argv.includes("--open");
   const pinnedFlag = argv.includes("--pinned");
 
-  // Helper to extract option value
   const getOpt = (opt: string): string | undefined => {
     const idx = argv.indexOf(opt);
     if (idx !== -1 && idx + 1 < argv.length && !argv[idx + 1]!.startsWith("--")) {
@@ -48,25 +61,12 @@ export async function handleCliCommand(
 
   const projectId = getOpt("--project") || defaultProjectId || "default";
 
-  // Filter out flag pairs for positional parsing
   const cleanArgs: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
-    if (arg === "--json" || arg === "--open" || arg === "--pinned") {
-      continue;
-    }
-    if (
-      arg === "--project" ||
-      arg === "--tag" ||
-      arg === "--search" ||
-      arg === "--title" ||
-      arg === "--tags" ||
-      arg === "--notes" ||
-      arg === "--prompt" ||
-      arg === "--source" ||
-      arg === "--id"
-    ) {
-      i++; // skip next value
+    if (BOOLEAN_FLAGS.has(arg)) continue;
+    if (VALUE_OPTIONS.has(arg)) {
+      i++;
       continue;
     }
     cleanArgs.push(arg);
@@ -143,33 +143,13 @@ export async function handleCliCommand(
     }
 
     case "pin":
-    case "star": {
-      const id = positional[0] || getOpt("--id");
-      if (!id) {
-        return error("Missing reference ID to pin. Usage: bb references pin <id>");
-      }
-
-      const ref = await service.get(projectId, id);
-      if (!ref) {
-        return error(`Reference with ID "${id}" not found.`);
-      }
-
-      if (!ref.pinned) {
-        await service.togglePin(ref.projectId, id);
-        publisher("references-changed", { projectId: ref.projectId });
-      }
-
-      return reply(
-        { pinned: true, id, projectId: ref.projectId },
-        `📌 Reference [${id}] "${ref.title}" pinned as Камертон (На столе).`
-      );
-    }
-
+    case "star":
     case "unpin":
     case "unstar": {
+      const isPin = command === "pin" || command === "star";
       const id = positional[0] || getOpt("--id");
       if (!id) {
-        return error("Missing reference ID to unpin. Usage: bb references unpin <id>");
+        return error(`Missing reference ID to ${isPin ? "pin" : "unpin"}. Usage: bb references ${command} <id>`);
       }
 
       const ref = await service.get(projectId, id);
@@ -177,15 +157,16 @@ export async function handleCliCommand(
         return error(`Reference with ID "${id}" not found.`);
       }
 
-      if (ref.pinned) {
+      if (ref.pinned !== isPin) {
         await service.togglePin(ref.projectId, id);
         publisher("references-changed", { projectId: ref.projectId });
       }
 
-      return reply(
-        { pinned: false, id, projectId: ref.projectId },
-        `Reference [${id}] "${ref.title}" unpinned from Камертон.`
-      );
+      const msg = isPin
+        ? `📌 Reference [${id}] "${ref.title}" pinned as Камертон (На столе).`
+        : `Reference [${id}] "${ref.title}" unpinned from Камертон.`;
+
+      return reply({ pinned: isPin, id, projectId: ref.projectId }, msg);
     }
 
     case "remove": {

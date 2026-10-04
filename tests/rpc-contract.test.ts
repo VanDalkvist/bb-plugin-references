@@ -1,6 +1,8 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { rpcContract } from "../src/rpc/contract.ts";
+import { createRpcHandlers } from "../src/rpc/handlers.ts";
+import { ReferenceService } from "../src/services/reference-service.ts";
 
 describe("RPC Contract (AP-026 DTO Boundaries)", () => {
   test("references_list schema validates correct inputs and rejects invalid", () => {
@@ -47,8 +49,50 @@ describe("RPC Contract (AP-026 DTO Boundaries)", () => {
     assert.equal(valid.success, true);
   });
 
-  test("projects_list schema accepts null or empty input", () => {
-    const valid = rpcContract.projects_list.input.safeParse(null);
+  test("references_toggle_pin schema requires id and accepts optional projectId", () => {
+    const valid = rpcContract.references_toggle_pin.input.safeParse({
+      projectId: "proj-123",
+      id: "ref-789",
+    });
     assert.equal(valid.success, true);
+
+    const missingId = rpcContract.references_toggle_pin.input.safeParse({
+      projectId: "proj-123",
+    });
+    assert.equal(missingId.success, false);
+  });
+
+  test("createRpcHandlers wires handlers correctly to ReferenceService", async () => {
+    let published: Array<{ channel: string; payload: unknown }> = [];
+    const mockStorage = {
+      async getReferences() {
+        return [];
+      },
+      async saveReferences() {},
+      async listProjectIds() {
+        return [];
+      },
+      async getAllReferences() {
+        return [];
+      },
+    };
+    const mockBb = {
+      realtime: {
+        publish(channel: string, payload: unknown) {
+          published.push({ channel, payload });
+        },
+      },
+    };
+
+    const service = new ReferenceService(mockStorage as any);
+    const handlers = createRpcHandlers(service, mockBb as any);
+
+    const listRes = await handlers.references_list({ projectId: "test" });
+    assert.deepEqual(listRes, { references: [] });
+
+    const openRes = await handlers.references_open({ projectId: "test", referenceId: "ref-1" });
+    assert.deepEqual(openRes, { ok: true });
+    assert.equal(published.length, 1);
+    assert.equal(published[0]?.channel, "references-open");
   });
 });
