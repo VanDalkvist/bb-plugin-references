@@ -29,7 +29,9 @@ function ReferencesAutoOpener() {
     navigate.openThreadPanel({
       actionId: "project-references",
       title: "References",
-      params: initialSelectedId ? { initialSelectedId } : null,
+      params: initialSelectedId
+        ? { initialSelectedId, initialProjectId: data?.projectId || null }
+        : null,
     });
   });
 
@@ -40,7 +42,7 @@ function ReferencesAutoOpener() {
         navigate.openThreadPanel({
           actionId: "project-references",
           title: "References",
-          params: { initialSelectedId: detail.id },
+          params: { initialSelectedId: detail.id, initialProjectId: detail.projectId || null },
         });
       }
     };
@@ -83,11 +85,12 @@ function ReferencesHeaderButton() {
  * Panel tab opened in the right side of the BB IDE thread view.
  */
 function ThreadPanelComponent(props: PluginThreadPanelProps) {
-  const params = props.params as { initialSelectedId?: string } | null;
+  const params = props.params as { initialSelectedId?: string; initialProjectId?: string } | null;
   return (
     <ReferencesPanel
       threadId={props.threadId}
       initialSelectedId={params?.initialSelectedId ?? null}
+      initialProjectId={params?.initialProjectId ?? null}
     />
   );
 }

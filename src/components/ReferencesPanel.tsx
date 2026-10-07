@@ -15,11 +15,14 @@ const VIEW_MODE_KEY = "bb:references:viewMode";
 export interface ReferencesPanelProps {
   threadId?: string;
   initialSelectedId?: string | null;
+  initialProjectId?: string | null;
 }
 
-export function ReferencesPanel({ initialSelectedId }: ReferencesPanelProps) {
+export function ReferencesPanel({ initialSelectedId, initialProjectId }: ReferencesPanelProps) {
   const ctx = useBbContext();
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => ctx?.projectId || null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    () => initialProjectId || ctx?.projectId || null
+  );
 
   const [viewMode, setViewMode] = useState<"projects" | "feed">(() => {
     try {

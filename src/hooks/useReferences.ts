@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRpc, useRealtime, useBbContext } from "@get-bb/plugin-sdk/app";
 import type { ReferencesRpcContract } from "../rpc/contract.ts";
 import type { Reference, TagInfo, CreateReferenceInput, ProjectSummary, ReferenceKind } from "../types/schema.ts";
@@ -32,6 +32,9 @@ export function useReferences({
   const [error, setError] = useState<string | null>(null);
   const [selectedReference, setSelectedReference] = useState<Reference | null>(null);
 
+  // Track the initialSelectedId that has already been consumed so it only opens once
+  const consumedInitialIdRef = useRef<string | null>(null);
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -54,23 +57,46 @@ export function useReferences({
       setReferences(refsRes.references);
       setTags(tagsRes.tags);
       setProjects(projectsRes.projects);
-
-      if (initialSelectedId) {
-        const found = refsRes.references.find((r) => r.id === initialSelectedId);
-        if (found) {
-          setSelectedReference(found);
-        }
-      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load references");
     } finally {
       setLoading(false);
     }
-  }, [rpc, selectedProjectId, selectedTag, kindFilter, pinnedOnly, searchQuery, initialSelectedId]);
+  }, [rpc, selectedProjectId, selectedTag, kindFilter, pinnedOnly, searchQuery]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Consume initialSelectedId only ONCE when a new non-null id is provided
+  useEffect(() => {
+    if (!initialSelectedId || consumedInitialIdRef.current === initialSelectedId) {
+      return;
+    }
+
+    // Try finding in loaded references first
+    const found = references.find((r) => r.id === initialSelectedId);
+    if (found) {
+      setSelectedReference(found);
+      consumedInitialIdRef.current = initialSelectedId;
+      return;
+    }
+
+    // If not found in current list, fetch directly once
+    rpc.call("references_get", {
+      projectId: selectedProjectId || ctx?.projectId || "default",
+      id: initialSelectedId,
+    })
+      .then((res) => {
+        if (res.reference) {
+          setSelectedReference(res.reference);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        consumedInitialIdRef.current = initialSelectedId;
+      });
+  }, [initialSelectedId, references, selectedProjectId, ctx?.projectId, rpc]);
 
   useRealtime("references-changed", () => {
     fetchData();
@@ -90,6 +116,7 @@ export function useReferences({
         .then((res) => {
           if (res.reference) {
             setSelectedReference(res.reference);
+            consumedInitialIdRef.current = data.referenceId;
           }
         })
         .catch(() => {

@@ -45,7 +45,8 @@ export function mountReferenceLinksContentScript(
       }
     }
 
-    if (refId) {
+    if (refId && refId.trim().length > 0) {
+      refId = refId.trim();
       e.preventDefault();
       e.stopPropagation();
 
