@@ -11,7 +11,7 @@ export type RealtimePublisher = (channel: string, payload: unknown) => void;
 
 export const CLI_USAGE = `Usage:
   bb references list [--project <id>] [--tag <tag>] [--pinned] [--search <query>] [--json]
-  bb references add <url_or_path> [--title <title>] [--tags <t1,t2>] [--notes <notes>] [--prompt <prompt>] [--pinned] [--source <source>] [--project <id>] [--open] [--json]
+  bb references add <url_or_path> [--title <title>] [--tags <t1,t2>] [--notes <notes>] [--prompt <prompt>] [--pinned] [--source <source>] [--project <id>] [--json]
   bb references pin <id> [--project <id>] [--json]
   bb references unpin <id> [--project <id>] [--json]
   bb references remove <id> [--project <id>] [--json]
@@ -134,11 +134,7 @@ export async function handleCliCommand(
 
       publisher("references-changed", { projectId });
 
-      if (openFlag) {
-        publisher("references-open", { projectId, referenceId: ref.id });
-      }
-
-      const text = `Added reference: ${ref.title} [${ref.id}] to project "${projectId}"${openFlag ? " (auto-open panel triggered)" : ""}`;
+      const text = `Added reference: ${ref.title} [${ref.id}] to project "${projectId}".`;
       return reply(ref, text);
     }
 

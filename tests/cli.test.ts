@@ -50,9 +50,9 @@ describe("CLI Commands (TDD)", () => {
     assert.deepEqual(list[0]?.tags, ["ui", "mobile"]);
   });
 
-  test("triggers realtime open event when --open flag is passed (Killer Feature)", async () => {
+  test("triggers realtime references-changed event without unsolicited open popup", async () => {
     const res = await handleCliCommand(
-      ["add", "https://example.com/moodboard.png", "--title", "Moodboard", "--open"],
+      ["add", "https://example.com/moodboard.png", "--title", "Moodboard"],
       service,
       publisher,
       "proj-test"
@@ -61,8 +61,7 @@ describe("CLI Commands (TDD)", () => {
     assert.equal(res.exitCode, 0);
 
     const openEvent = publishedEvents.find((e) => e.channel === "references-open");
-    assert.ok(openEvent, "Should publish references-open event");
-    assert.equal((openEvent.payload as any).projectId, "proj-test");
+    assert.equal(openEvent, undefined, "Should not publish unsolicited references-open event");
 
     const changedEvent = publishedEvents.find((e) => e.channel === "references-changed");
     assert.ok(changedEvent, "Should publish references-changed event");

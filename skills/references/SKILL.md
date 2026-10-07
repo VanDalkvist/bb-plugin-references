@@ -1,11 +1,11 @@
 ---
 name: references
-description: "Visual references and moodboard panel for BB IDE. Use when asked to collect visual references, UI inspiration, screenshots, or moodboards for the current project. Automatically pops open the visual panel in the BB sidebar."
+description: "Visual references and moodboard panel for BB IDE. Use when asked to collect visual references, UI inspiration, screenshots, or moodboards for the current project. Renders interactive inline cards in chat and provides a moodboard in BB IDE."
 ---
 
 # References & Moodboards in BB IDE
 
-This plugin provides a dedicated visual references panel and moodboard directly in BB IDE's right panel (`project-references`).
+This plugin provides a dedicated visual references panel and moodboard directly in BB IDE's right panel (`project-references`) and sidebar.
 
 ## When to Use
 
@@ -15,18 +15,18 @@ Use this skill whenever the user asks to:
 - "Show project references"
 - Multilingual equivalents (e.g. "Собери референсы", "Добавь в мудборд")
 
-## Automatic Panel Opening
+## Non-Intrusive Workflow & Chat Directives
 
-When adding references for the user, include the `--open` flag (or pass `open: true` in the tool) so the references panel pops open automatically in BB IDE on the right side and displays the new visual references in real-time.
+When adding references, the items are quietly saved to the project moodboard and rendered cleanly in chat using the `::reference` directive. The user can view the card directly in chat, click to zoom with Lightbox, or open the panel at their own pace without unsolicited popups.
 
 ## CLI Usage
 
 ```bash
-# Add a reference from web or local file and automatically open the panel:
-bb references add "https://images.unsplash.com/photo-..." --title "Dark Dashboard UI" --tags "ui,dark-mode,dashboard" --open
+# Add a reference from web or local file:
+bb references add "https://images.unsplash.com/photo-..." --title "Dark Dashboard UI" --tags "ui,dark-mode,dashboard"
 
 # Add local generated image with generation prompt:
-bb references add "assets/hero.png" --title "Steampunk Tower" --prompt "Tilt-shift macro diorama of miniature steampunk tower" --open
+bb references add "assets/hero.png" --title "Steampunk Tower" --prompt "Tilt-shift macro diorama of miniature steampunk tower"
 
 # List project references:
 bb references list
@@ -44,9 +44,6 @@ bb references list --tag ui
 # Search:
 bb references list --search "dashboard"
 
-# Open the panel explicitly:
-bb references open
-
 # Output as JSON:
 bb references list --json
 ```
@@ -54,7 +51,7 @@ bb references list --json
 ## Agent Tools
 
 The plugin registers native agent tools:
-- `references_add({ urlOrPath, title, tags, notes, prompt, pinned, open: true })`
+- `references_add({ urlOrPath, title, tags, notes, prompt, pinned })`
 - `references_pin({ id, pinned })` — pin/unpin reference as the project's active aesthetic anchor
 - `references_list({ tag, query })`
 

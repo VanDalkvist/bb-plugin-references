@@ -1,11 +1,11 @@
 # bb-plugin-references
 
-Visual references and moodboard panel for BB IDE projects with instant agent auto-open.
+Visual references and moodboard panel for BB IDE projects.
 
 ## Features
 
 - 🖼️ **Visual Moodboard in Thread Panel:** Dedicated `References` panel (`app.slots.threadPanelAction`) with responsive grid, OpenGraph link cards, tags, and design notes.
-- ⚡ **Instant Agent Auto-Open:** When an AI agent collects references (`bb references add ... --open`), the references panel automatically opens in the active BB IDE thread.
+- 💬 **Inline Chat Directives:** Render interactive reference previews (`::reference{id="..."}`) and mini-galleries directly within chat messages without forcing panel popups.
 - 📁 **Per-Project Isolation:** References are scoped to the active project (`projectId`) with a global all-projects overview.
 - 🔒 **Any Source Supported:** Seamlessly handles web URLs (Figma, Dribbble, Unsplash, repositories) and local project images, served securely via an authenticated plugin HTTP endpoint with path-traversal protection.
 - 📌 **Aesthetic Anchors:** Pin key stylistic references to the working set so they stay visible at the top of the feed and can be filtered in one click.
@@ -30,11 +30,11 @@ bb plugin install .
 ## CLI Usage
 
 ```bash
-# Add a web reference and automatically open the panel in BB IDE:
-bb references add "https://images.unsplash.com/photo-..." --title "Dark Dashboard UI" --tags "ui,dark-mode,dashboard" --open
+# Add a web reference:
+bb references add "https://images.unsplash.com/photo-..." --title "Dark Dashboard UI" --tags "ui,dark-mode,dashboard"
 
 # Add a local image file:
-bb references add "assets/hero.png" --title "Hero Section" --tags "landing,hero" --open
+bb references add "assets/hero.png" --title "Hero Section" --tags "landing,hero"
 
 # List project references:
 bb references list
@@ -64,7 +64,7 @@ bb references tags
 ## For AI Agents
 
 The plugin registers the `skills/references/SKILL.md` skill and native tools:
-- `references_add({ urlOrPath, title, tags, notes, prompt, pinned, open: true })`
+- `references_add({ urlOrPath, title, tags, notes, prompt, pinned })`
 - `references_pin({ id, pinned })`
 - `references_list({ tag, query })`
 

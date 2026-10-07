@@ -1,6 +1,6 @@
 {
   "name": "bb-plugin-references",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "engines": {
     "bb": ">=0.44",
@@ -8,7 +8,7 @@
   },
   "bb": {
     "name": "References",
-    "description": "Visual references and moodboard panel with instant agent auto-open.",
+    "description": "Visual references and moodboard panel for BB IDE.",
     "branding": {
       "icon": "Images"
     },

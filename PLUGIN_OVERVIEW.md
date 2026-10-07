@@ -4,7 +4,7 @@ Visual moodboards, UI inspiration, and design references integrated directly int
 
 ## Features
 
-- **Instant Agent Auto-Open:** Automatically pops open the visual references panel in your active thread when an agent collects references (`--open`).
+- **Non-Intrusive Workflow:** Renders rich interactive reference cards directly in chat (`::reference`), keeping visual context at hand without unsolicited UI popups.
 - **Per-Project Isolation:** Keep moodboards and references scoped to each project (`projectId`), or browse all projects in a unified feed.
 - **Web & Local Files:** Seamlessly supports external websites (with automatic OpenGraph preview scraping) and local project files with secure file serving.
 - **Aesthetic Anchors:** Pin key stylistic references to keep your active visual working set immediately accessible at the top of the board.
@@ -15,8 +15,8 @@ Visual moodboards, UI inspiration, and design references integrated directly int
 ## Quick Start
 
 ```bash
-# Add a web reference and pop open the panel:
-bb references add "https://linear.app" --open
+# Add a web reference:
+bb references add "https://linear.app"
 
 # Pin as an aesthetic anchor:
 bb references pin <id>

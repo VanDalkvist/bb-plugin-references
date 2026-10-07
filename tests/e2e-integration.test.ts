@@ -37,7 +37,7 @@ describe("E2E Reference Moodboard Integration", () => {
     const localImgPath = join(workspaceDir, "dark-nav-bar.png");
     await writeFile(localImgPath, Buffer.from([0x89, 0x50, 0x4e, 0x47])); // PNG magic bytes
 
-    // 2. Agent runs: bb references add <path> --title "Dark Nav" --tags "ui,navigation,dark" --open
+    // 2. Agent runs: bb references add <path> --title "Dark Nav" --tags "ui,navigation,dark"
     const cliRes = await handleCliCommand(
       [
         "add",
@@ -48,7 +48,6 @@ describe("E2E Reference Moodboard Integration", () => {
         "ui,navigation,dark",
         "--notes",
         "Clean 12px pill styling with subtle elevation",
-        "--open",
       ],
       service,
       publisher,
@@ -57,11 +56,12 @@ describe("E2E Reference Moodboard Integration", () => {
 
     assert.equal(cliRes.exitCode, 0);
 
-    // 3. Verify Killer Feature: realtime open signal published immediately
+    // 3. Verify non-intrusive notification: realtime changed signal published, no unsolicited open
+    const changedEvent = publishedEvents.find((e) => e.channel === "references-changed");
+    assert.ok(changedEvent, "Should emit references-changed realtime event");
+    assert.equal(changedEvent.payload.projectId, "project-alpha");
     const openEvent = publishedEvents.find((e) => e.channel === "references-open");
-    assert.ok(openEvent, "Should emit references-open realtime event");
-    assert.equal(openEvent.payload.projectId, "project-alpha");
-    assert.ok(openEvent.payload.referenceId);
+    assert.equal(openEvent, undefined, "Should not emit unsolicited open event");
 
     // 4. Verify reference is listed with correct metadata
     const list = await service.list("project-alpha");

@@ -102,29 +102,6 @@ export function useReferences({
     fetchData();
   });
 
-  useRealtime("references-open", (payload: unknown) => {
-    const data = payload as { projectId?: string; referenceId?: string };
-    if (data.projectId && data.projectId !== selectedProjectId) {
-      onProjectChange?.(data.projectId);
-    }
-    fetchData();
-    if (data.referenceId) {
-      rpc.call("references_get", {
-        projectId: data.projectId || selectedProjectId || "default",
-        id: data.referenceId,
-      })
-        .then((res) => {
-          if (res.reference) {
-            setSelectedReference(res.reference);
-            consumedInitialIdRef.current = data.referenceId;
-          }
-        })
-        .catch(() => {
-          // intentionally ignored: reference might have been removed before open
-        });
-    }
-  });
-
   const handleAdd = useCallback(
     async (input: CreateReferenceInput) => {
       const pid = selectedProjectId || ctx?.projectId || "default";

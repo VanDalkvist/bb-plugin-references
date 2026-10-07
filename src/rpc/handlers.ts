@@ -57,15 +57,6 @@ export function createRpcHandlers(
       // Ephemeral broadcast to keep all open reference views fresh
       bb.realtime.publish("references-changed", { projectId: ref.projectId });
 
-      if (open) {
-        // Killer feature: auto-open the references tab in BB
-        bb.realtime.publish("references-open", {
-          projectId: ref.projectId,
-          threadId,
-          referenceId: ref.id,
-        });
-      }
-
       return ref;
     },
 

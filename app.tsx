@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import {
   definePluginApp,
   useBbNavigate,
-  useRealtime,
   type PluginThreadPanelProps,
 } from "@get-bb/plugin-sdk/app";
 import { ReferencesPanel } from "./src/components/ReferencesPanel.tsx";
@@ -14,26 +13,11 @@ import { Button } from "./components/ui/button.tsx";
 import { Icon } from "./components/ui/icon.tsx";
 
 /**
- * Invisible overlay component that listens for:
- * 1. Agent realtime "references-open" signals
- * 2. Chat hyperlink clicks from content-script ("bb:references:open-reference")
- * and automatically pops open the references panel in BB IDE focused on the target item.
+ * Component that listens for explicit chat hyperlink clicks
+ * ("bb:references:open-reference") to open the references panel on demand.
  */
-function ReferencesAutoOpener() {
+function ReferencesLinkHandler() {
   const navigate = useBbNavigate();
-
-  useRealtime("references-open", (payload: unknown) => {
-    const data = payload as { projectId?: string; threadId?: string; referenceId?: string } | null;
-    const initialSelectedId = data?.referenceId || null;
-
-    navigate.openThreadPanel({
-      actionId: "project-references",
-      title: "References",
-      params: initialSelectedId
-        ? { initialSelectedId, initialProjectId: data?.projectId || null }
-        : null,
-    });
-  });
 
   useEffect(() => {
     const handleCustomOpen = (e: Event) => {
@@ -107,10 +91,10 @@ function NavPanelComponent() {
 }
 
 export default definePluginApp((app) => {
-  // 1. Killer feature auto-opener overlay (realtime + chat hyperlinks)
+  // 1. Overlay handler for explicit chat hyperlinks
   app.slots.experimental_appOverlay({
-    id: "references-auto-opener",
-    component: ReferencesAutoOpener,
+    id: "references-link-handler",
+    component: ReferencesLinkHandler,
   });
 
   // 2. Right thread panel tab
