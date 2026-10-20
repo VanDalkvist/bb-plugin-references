@@ -49,18 +49,18 @@ function ReferencesHeaderButton() {
   return (
     <Button
       variant="ghost"
-      size="sm"
-      className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+      size="icon"
+      className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-state-hover cursor-pointer transition-colors"
       onClick={() =>
         navigate.openThreadPanel({
           actionId: "project-references",
           title: "References",
         })
       }
-      title="Open Visual References"
+      title="Визуальные референсы (References) — мудборды и палитры"
+      aria-label="Визуальные референсы (References)"
     >
-      <Icon name="Images" className="size-3.5" />
-      <span className="hidden sm:inline">References</span>
+      <Icon name="Palette" className="size-3.5" />
     </Button>
   );
 }
@@ -101,7 +101,7 @@ export default definePluginApp((app) => {
   app.slots.threadPanelAction({
     id: "project-references",
     title: "References",
-    icon: "Images",
+    icon: "Palette",
     layout: "flush",
     component: ThreadPanelComponent,
   });
@@ -117,7 +117,7 @@ export default definePluginApp((app) => {
   app.slots.navPanel({
     id: "project-references-nav",
     title: "References",
-    icon: "Images",
+    icon: "Palette",
     path: "references",
     component: NavPanelComponent,
   });
