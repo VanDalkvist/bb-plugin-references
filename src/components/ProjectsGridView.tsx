@@ -35,8 +35,9 @@ export const ProjectsGridView = memo(function ProjectsGridView({
           onClick={() => onSelectProject(proj.id)}
           className={cn(
             "group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card",
-            "cursor-pointer transition-all duration-150 ease-out hover:border-primary/50 hover:shadow-md hover:bg-card/90"
+            "cursor-pointer transition-colors duration-150 ease-out hover:shadow-sm hover:bg-card/90"
           )}
+          style={{ contain: "paint layout" }}
         >
           {/* Project Preview Collage (2x2 grid or single image) */}
           <div className="relative aspect-video w-full overflow-hidden bg-muted/40 p-1.5">
@@ -49,6 +50,7 @@ export const ProjectsGridView = memo(function ProjectsGridView({
                 src={resolveImageUrl(proj.previewUrls[0]!)}
                 alt={proj.name}
                 loading="lazy"
+                decoding="async"
                 className="h-full w-full rounded-lg object-cover transition-transform duration-300 group-hover:scale-105"
               />
             ) : (
@@ -59,6 +61,7 @@ export const ProjectsGridView = memo(function ProjectsGridView({
                       src={resolveImageUrl(url)}
                       alt=""
                       loading="lazy"
+                      decoding="async"
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   </div>
@@ -67,7 +70,7 @@ export const ProjectsGridView = memo(function ProjectsGridView({
             )}
 
             {/* Reference count badge */}
-            <span className="absolute bottom-2.5 right-2.5 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-semibold text-white/95 backdrop-blur-sm">
+            <span className="absolute bottom-2.5 right-2.5 rounded-full bg-black/85 px-2 py-0.5 text-[10px] font-semibold text-white/95">
               {proj.count} {proj.count === 1 ? "reference" : "references"}
             </span>
           </div>

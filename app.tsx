@@ -3,9 +3,9 @@ import { useEffect } from "react";
 import {
   definePluginApp,
   useBbNavigate,
-  type PluginThreadPanelProps,
 } from "@get-bb/plugin-sdk/app";
 import { ReferencesPanel } from "./src/components/ReferencesPanel.tsx";
+import { ErrorBoundary } from "./src/components/ErrorBoundary.tsx";
 import { InlineReferenceDirective } from "./src/components/InlineReferenceDirective.tsx";
 import { InlineReferencesGalleryDirective } from "./src/components/InlineReferencesGalleryDirective.tsx";
 import { mountReferenceLinksContentScript } from "./src/content-scripts/reference-links.ts";
@@ -55,6 +55,7 @@ function ReferencesHeaderButton() {
         navigate.openThreadPanel({
           actionId: "project-references",
           title: "References",
+          params: { initialSelectedId: null },
         })
       }
       title="Визуальные референсы (References) — мудборды и палитры"
@@ -68,14 +69,16 @@ function ReferencesHeaderButton() {
 /**
  * Panel tab opened in the right side of the BB IDE thread view.
  */
-function ThreadPanelComponent(props: PluginThreadPanelProps) {
+function ThreadPanelComponent(props: { threadId: string; params?: unknown }) {
   const params = props.params as { initialSelectedId?: string; initialProjectId?: string } | null;
   return (
-    <ReferencesPanel
-      threadId={props.threadId}
-      initialSelectedId={params?.initialSelectedId ?? null}
-      initialProjectId={params?.initialProjectId ?? null}
-    />
+    <ErrorBoundary fallbackTitle="References Panel Error">
+      <ReferencesPanel
+        threadId={props.threadId}
+        initialSelectedId={params?.initialSelectedId ?? null}
+        initialProjectId={params?.initialProjectId ?? null}
+      />
+    </ErrorBoundary>
   );
 }
 
@@ -84,9 +87,11 @@ function ThreadPanelComponent(props: PluginThreadPanelProps) {
  */
 function NavPanelComponent() {
   return (
-    <div className="h-full w-full overflow-hidden">
-      <ReferencesPanel />
-    </div>
+    <ErrorBoundary fallbackTitle="References Moodboard Error">
+      <div className="h-full w-full overflow-hidden">
+        <ReferencesPanel />
+      </div>
+    </ErrorBoundary>
   );
 }
 
@@ -98,7 +103,9 @@ export default definePluginApp((app) => {
   });
 
   // 2. Right thread panel tab
-  app.slots.threadPanelAction({
+  app.slots.experimental_tab({
+    context: { kind: "thread" },
+    availability: "action",
     id: "project-references",
     title: "References",
     icon: "Palette",

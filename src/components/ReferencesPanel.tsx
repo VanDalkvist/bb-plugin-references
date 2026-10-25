@@ -7,6 +7,7 @@ import { ProjectsGridView } from "./ProjectsGridView.tsx";
 import { AddReferenceModal } from "./AddReferenceModal.tsx";
 import { ReferencesToolbar } from "./ReferencesToolbar.tsx";
 import { ReferencesEmptyState } from "./ReferencesEmptyState.tsx";
+import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import { useReferences } from "../hooks/useReferences.ts";
 import { Icon } from "../../components/ui/icon.tsx";
 
@@ -112,7 +113,7 @@ export function ReferencesPanel({ initialSelectedId, initialProjectId }: Referen
   }, [projects, searchQuery]);
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
+    <div className="relative flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
       <ReferencesToolbar
         isGlobalView={isGlobalView}
         selectedProjectId={selectedProjectId}
@@ -192,20 +193,22 @@ export function ReferencesPanel({ initialSelectedId, initialProjectId }: Referen
             onOpenAddModal={() => setIsAddModalOpen(true)}
           />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 auto-rows-max">
-            {references.map((ref) => (
-              <ReferenceCard
-                key={ref.id}
-                reference={ref}
-                showProjectBadge={isGlobalView}
-                onSelect={(selected) => setSelectedReference(selected)}
-                onTagClick={(tag) => setSelectedTag(tag)}
-                onProjectClick={(projId) => setSelectedProjectId(projId)}
-                onTogglePin={handleTogglePin}
-                onRemove={handleRemove}
-              />
-            ))}
-          </div>
+          <ErrorBoundary fallbackTitle="Could not display reference cards" onReset={fetchData}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 auto-rows-max">
+              {references.map((ref) => (
+                <ReferenceCard
+                  key={ref.id}
+                  reference={ref}
+                  showProjectBadge={isGlobalView}
+                  onSelect={(selected) => setSelectedReference(selected)}
+                  onTagClick={(tag) => setSelectedTag(tag)}
+                  onProjectClick={(projId) => setSelectedProjectId(projId)}
+                  onTogglePin={handleTogglePin}
+                  onRemove={handleRemove}
+                />
+              ))}
+            </div>
+          </ErrorBoundary>
         )}
       </div>
 

@@ -41,7 +41,7 @@ export function ReferenceLightboxDetails({
   });
 
   return (
-    <div className="flex w-full md:w-80 flex-col justify-between border-t md:border-t-0 md:border-l border-border/60 bg-card p-4 overflow-y-auto">
+    <div className="flex w-full lg:w-80 flex-col justify-between border-t lg:border-t-0 lg:border-l border-border bg-card p-3 sm:p-4 shrink-0">
       <div className="flex flex-col gap-4">
         {/* Title and Domain Header */}
         <div>

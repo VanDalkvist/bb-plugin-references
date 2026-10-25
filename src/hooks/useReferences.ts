@@ -13,6 +13,9 @@ export interface UseReferencesOptions {
   onProjectChange?: (id: string | null) => void;
 }
 
+// Module-level cache of consumed initial IDs across panel remounts
+const consumedInitialIds = new Set<string>();
+
 export function useReferences({
   selectedProjectId,
   selectedTag,
@@ -31,9 +34,6 @@ export function useReferences({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedReference, setSelectedReference] = useState<Reference | null>(null);
-
-  // Track the initialSelectedId that has already been consumed so it only opens once
-  const consumedInitialIdRef = useRef<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -68,9 +68,9 @@ export function useReferences({
     fetchData();
   }, [fetchData]);
 
-  // Consume initialSelectedId only ONCE when a new non-null id is provided
+  // Consume initialSelectedId only ONCE across panel unmount/remounts
   useEffect(() => {
-    if (!initialSelectedId || consumedInitialIdRef.current === initialSelectedId) {
+    if (!initialSelectedId || consumedInitialIds.has(initialSelectedId)) {
       return;
     }
 
@@ -78,7 +78,7 @@ export function useReferences({
     const found = references.find((r) => r.id === initialSelectedId);
     if (found) {
       setSelectedReference(found);
-      consumedInitialIdRef.current = initialSelectedId;
+      consumedInitialIds.add(initialSelectedId);
       return;
     }
 
@@ -94,7 +94,7 @@ export function useReferences({
       })
       .catch(() => {})
       .finally(() => {
-        consumedInitialIdRef.current = initialSelectedId;
+        consumedInitialIds.add(initialSelectedId);
       });
   }, [initialSelectedId, references, selectedProjectId, ctx?.projectId, rpc]);
 

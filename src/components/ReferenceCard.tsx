@@ -68,8 +68,9 @@ export const ReferenceCard = memo(function ReferenceCard({
       onClick={() => onSelect(reference)}
       className={cn(
         "group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card",
-        "cursor-pointer transition-all duration-150 ease-out hover:border-border/80 hover:shadow-md hover:bg-card/90"
+        "cursor-pointer transition-colors duration-150 ease-out hover:shadow-sm hover:bg-card/90"
       )}
+      style={{ contain: "paint layout" }}
     >
       {/* Image / Website Preview Container */}
       <div className="relative aspect-video w-full overflow-hidden bg-muted/40">
@@ -78,6 +79,7 @@ export const ReferenceCard = memo(function ReferenceCard({
             src={imgSrc}
             alt={reference.title}
             loading="lazy"
+            decoding="async"
             onError={() => setImgError(true)}
             className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
           />
@@ -101,7 +103,7 @@ export const ReferenceCard = memo(function ReferenceCard({
 
         {/* Pinned Badge (Aesthetic Anchor) */}
         {reference.pinned && (
-          <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-sm backdrop-blur-sm">
+          <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-xs">
             <Icon name="Pin" className="size-2.5 fill-current" />
             <span>Anchor</span>
           </div>
@@ -116,7 +118,7 @@ export const ReferenceCard = memo(function ReferenceCard({
               onProjectClick?.(reference.projectId);
             }}
             className={cn(
-              "absolute z-10 flex items-center gap-1 rounded bg-black/75 px-2 py-0.5 text-[10px] font-medium text-white/95 backdrop-blur-sm hover:bg-primary hover:text-primary-foreground transition-colors",
+              "absolute z-10 flex items-center gap-1 rounded bg-black/85 px-2 py-0.5 text-[10px] font-medium text-white/95 hover:bg-primary hover:text-primary-foreground transition-colors",
               reference.pinned ? "top-2 left-20" : "top-2 left-2"
             )}
             title={`Filter by project "${reference.projectName || reference.projectId}"`}
@@ -128,7 +130,7 @@ export const ReferenceCard = memo(function ReferenceCard({
 
         {/* Domain & Favicon Pill for Websites */}
         {reference.domain && (
-          <span className="absolute bottom-2 right-2 z-10 flex items-center gap-1 rounded bg-black/75 px-1.5 py-0.5 text-[9px] font-medium text-white/90 backdrop-blur-sm">
+          <span className="absolute bottom-2 right-2 z-10 flex items-center gap-1 rounded bg-black/85 px-1.5 py-0.5 text-[9px] font-medium text-white/90">
             {reference.faviconUrl ? (
               <img src={reference.faviconUrl} alt="" className="size-2.5 rounded-sm" />
             ) : (
@@ -151,7 +153,7 @@ export const ReferenceCard = memo(function ReferenceCard({
 
         {/* Source Badge */}
         {reference.source && reference.source !== "manual" && (
-          <span className="absolute bottom-2 left-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm">
+          <span className="absolute bottom-2 left-2 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-medium text-white/90">
             {reference.source}
           </span>
         )}

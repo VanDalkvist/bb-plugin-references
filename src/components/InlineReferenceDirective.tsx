@@ -100,7 +100,7 @@ export function InlineReferenceDirective({ attributes }: PluginMessageDirectiveP
 
   if (loading) {
     return (
-      <div className="my-2 inline-flex items-center gap-2.5 rounded-xl border border-border/80 bg-card/60 p-2.5 text-xs text-muted-foreground animate-pulse backdrop-blur-sm">
+      <div className="my-2 inline-flex items-center gap-2.5 rounded-xl border border-border bg-card p-2.5 text-xs text-muted-foreground animate-pulse">
         <div className="size-10 rounded-lg bg-muted/70" />
         <div className="flex flex-col gap-1.5">
           <div className="h-3 w-32 rounded bg-muted/70" />
@@ -122,7 +122,7 @@ export function InlineReferenceDirective({ attributes }: PluginMessageDirectiveP
 
   return (
     <>
-      <div className="my-2.5 max-w-md overflow-hidden rounded-xl border border-border/80 bg-card text-foreground shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
+      <div className="my-2.5 max-w-md overflow-hidden rounded-xl border border-border bg-card text-foreground shadow-xs transition-colors hover:bg-card/90">
         <div className="flex items-center gap-3 p-2.5">
           {/* Thumbnail preview with zoom trigger */}
           <div
@@ -133,6 +133,7 @@ export function InlineReferenceDirective({ attributes }: PluginMessageDirectiveP
             <img
               src={imgSrc}
               alt={reference.title}
+              decoding="async"
               className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-110"
             />
             <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">

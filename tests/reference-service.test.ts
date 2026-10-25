@@ -358,4 +358,20 @@ describe("ReferenceService (TDD)", () => {
     assert.equal(loaded.length, 1);
     assert.equal(loaded[0]?.title, "Durable Reference");
   });
+
+  test("serializes concurrent writes safely without corruption (AP-034)", async () => {
+    // Add 10 references concurrently to the same project
+    const promises = Array.from({ length: 10 }, (_, i) =>
+      service.add("proj-concurrent", {
+        urlOrPath: `https://example.com/image-${i}.png`,
+        title: `Concurrent Image ${i}`,
+      })
+    );
+
+    const added = await Promise.all(promises);
+    assert.equal(added.length, 10);
+
+    const list = await service.list("proj-concurrent");
+    assert.equal(list.length, 10, "All 10 concurrent references should be preserved without race conditions");
+  });
 });

@@ -23,6 +23,24 @@ describe("MetadataScraper (TDD)", () => {
     assert.equal(meta4.previewUrl, undefined);
   });
 
+  test("blocks private IP ranges, loopback, and localhost (AP-044 SSRF hardening)", async () => {
+    const loopback = await scraper.scrape("http://127.0.0.1:8080/internal");
+    assert.equal(loopback.domain, "127.0.0.1");
+    assert.equal(loopback.previewUrl, undefined);
+
+    const localhost = await scraper.scrape("http://localhost:3000/api");
+    assert.equal(localhost.domain, "localhost");
+    assert.equal(localhost.previewUrl, undefined);
+
+    const rfc1918a = await scraper.scrape("http://10.200.1.5/admin");
+    assert.equal(rfc1918a.domain, "10.200.1.5");
+    assert.equal(rfc1918a.previewUrl, undefined);
+
+    const rfc1918c = await scraper.scrape("http://192.168.0.1/setup");
+    assert.equal(rfc1918c.domain, "192.168.0.1");
+    assert.equal(rfc1918c.previewUrl, undefined);
+  });
+
   test("identifies direct image URLs without fetching HTML", async () => {
     const meta = await scraper.scrape("https://example.com/assets/banner.png");
     assert.equal(meta.kind, "image");

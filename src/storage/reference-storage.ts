@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import type { Reference } from "../types/schema.ts";
+import { KeyedAsyncMutex } from "../utils/async-mutex.ts";
 
 export interface ReferenceStorage {
   getReferences(projectId: string): Promise<Reference[]>;
@@ -13,6 +14,7 @@ export interface ReferenceStorage {
 
 export class FileReferenceStorage implements ReferenceStorage {
   private baseDir: string;
+  private writeMutex = new KeyedAsyncMutex();
 
   constructor(baseDir: string) {
     this.baseDir = baseDir;
@@ -48,14 +50,17 @@ export class FileReferenceStorage implements ReferenceStorage {
   }
 
   async saveReferences(projectId: string, references: Reference[]): Promise<void> {
-    await mkdir(this.baseDir, { recursive: true });
-    const filePath = this.getFilePath(projectId);
-    const tempPath = `${filePath}.${randomUUID()}.tmp`;
+    const safeId = this.sanitizeProjectId(projectId);
+    return this.writeMutex.runExclusive(safeId, async () => {
+      await mkdir(this.baseDir, { recursive: true });
+      const filePath = this.getFilePath(projectId);
+      const tempPath = `${filePath}.${randomUUID()}.tmp`;
 
-    const content = JSON.stringify(references, null, 2);
-    // Atomic write pattern: write to tmp file then atomic rename
-    await writeFile(tempPath, content, "utf-8");
-    await rename(tempPath, filePath);
+      const content = JSON.stringify(references, null, 2);
+      // Atomic write pattern: write to tmp file then atomic rename
+      await writeFile(tempPath, content, "utf-8");
+      await rename(tempPath, filePath);
+    });
   }
 
   async listProjectIds(): Promise<string[]> {

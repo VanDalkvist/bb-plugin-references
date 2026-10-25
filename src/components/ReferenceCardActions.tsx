@@ -23,17 +23,17 @@ export function ReferenceCardActions({
   onRemove,
 }: ReferenceCardActionsProps) {
   return (
-    <div className="absolute inset-0 flex items-start justify-end gap-1.5 p-2 bg-gradient-to-b from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+    <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 z-20">
       {/* Toggle Pin / Anchor */}
       {onTogglePin && (
         <Button
           size="icon"
           variant={reference.pinned ? "default" : "secondary"}
           className={cn(
-            "size-7 backdrop-blur-sm transition-colors",
+            "size-7 shadow-xs border transition-colors",
             reference.pinned
-              ? "bg-primary text-primary-foreground hover:bg-primary/90"
-              : "bg-background/80 text-muted-foreground hover:text-foreground hover:bg-background"
+              ? "bg-primary text-primary-foreground hover:bg-primary/90 border-transparent"
+              : "bg-background/95 text-muted-foreground hover:text-foreground hover:bg-background border-border/80"
           )}
           title={reference.pinned ? "Unpin anchor" : "Pin as aesthetic anchor"}
           onClick={onTogglePin}
@@ -46,7 +46,7 @@ export function ReferenceCardActions({
       <Button
         size="icon"
         variant="secondary"
-        className="size-7 bg-background/80 backdrop-blur-sm hover:bg-background text-foreground"
+        className="size-7 bg-background/95 hover:bg-background text-foreground shadow-xs border border-border/80"
         title={copied ? "Copied!" : "Copy path / URL"}
         onClick={onCopy}
       >
@@ -60,7 +60,7 @@ export function ReferenceCardActions({
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="inline-flex size-7 items-center justify-center rounded-md bg-background/80 backdrop-blur-sm text-foreground hover:bg-background hover:text-primary transition-colors"
+          className="inline-flex size-7 items-center justify-center rounded-md bg-background/95 text-foreground hover:bg-background hover:text-primary transition-colors shadow-xs border border-border/80"
           title="Open site in new tab"
         >
           <Icon name="ExternalLink" className="size-3.5" />
@@ -72,10 +72,10 @@ export function ReferenceCardActions({
         size="icon"
         variant={isDeleting ? "destructive" : "secondary"}
         className={cn(
-          "size-7 backdrop-blur-sm",
+          "size-7 shadow-xs border transition-colors",
           isDeleting
-            ? "bg-destructive text-destructive-foreground"
-            : "bg-background/80 text-muted-foreground hover:text-destructive hover:bg-background"
+            ? "bg-destructive text-destructive-foreground border-transparent"
+            : "bg-background/95 text-muted-foreground hover:text-destructive hover:bg-background border-border/80"
         )}
         title={isDeleting ? "Click again to confirm delete" : "Delete reference"}
         onClick={onRemove}

@@ -17,12 +17,15 @@ import {
   createReferenceRecord,
   resolveAddFields,
   sortProjectSummaries,
+  applyReferenceUpsert,
 } from "./reference-helpers.ts";
+import { KeyedAsyncMutex } from "../utils/async-mutex.ts";
 
 export class ReferenceService {
   private storage: ReferenceStorage;
   private projectResolver?: ProjectResolver;
   private scraper?: MetadataScraper;
+  private projectMutex = new KeyedAsyncMutex();
 
   constructor(
     storage: ReferenceStorage,
@@ -56,62 +59,26 @@ export class ReferenceService {
       scraped = await this.scraper.scrape(input.urlOrPath);
     }
 
-    const { kind, title, previewUrl, faviconUrl, domain, tags, prompt, pinned, notes } =
-      resolveAddFields(input, scraped);
+    const addFields = resolveAddFields(input, scraped);
 
     const projectName = this.projectResolver
       ? await this.projectResolver.getProjectName(safeProjectId)
       : safeProjectId;
 
-    const existing = await this.storage.getReferences(safeProjectId);
-    const normalizedUrl = input.urlOrPath.trim().toLowerCase();
-
-    // AP-035 Idempotency: Check if this reference already exists in the project
-    const existingIndex = existing.findIndex(
-      (r) => r.urlOrPath.trim().toLowerCase() === normalizedUrl
-    );
-
-    if (existingIndex !== -1) {
-      const current = existing[existingIndex]!;
-      const updated = mergeReferenceUpdates(current, {
-        kind,
-        title: input.title?.trim() || current.title || title,
-        tags: tags.length > 0 ? tags : current.tags,
-        notes: notes ?? current.notes,
-        prompt: prompt ?? current.prompt ?? null,
-        pinned: input.pinned !== undefined ? (input.pinned ?? false) : current.pinned,
-        previewUrl: previewUrl ?? current.previewUrl,
-        faviconUrl: faviconUrl ?? current.faviconUrl,
-        domain: domain ?? current.domain ?? null,
-        source: input.source?.trim() || current.source,
-        aspectRatio: input.aspectRatio !== undefined ? (input.aspectRatio ?? null) : current.aspectRatio,
+    return this.projectMutex.runExclusive(safeProjectId, async () => {
+      const existing = await this.storage.getReferences(safeProjectId);
+      const { updatedList, result } = applyReferenceUpsert(existing, addFields, {
+        projectId: safeProjectId,
         projectName,
+        urlOrPath: input.urlOrPath,
+        source: input.source,
+        aspectRatio: input.aspectRatio,
+        customTitle: input.title,
+        pinnedInput: input.pinned,
       });
-      existing[existingIndex] = updated;
-      await this.storage.saveReferences(safeProjectId, existing);
-      return updated;
-    }
-
-    const ref = createReferenceRecord({
-      projectId: safeProjectId,
-      projectName,
-      kind,
-      urlOrPath: input.urlOrPath,
-      title,
-      tags,
-      notes,
-      prompt,
-      pinned,
-      previewUrl,
-      faviconUrl,
-      domain: domain ?? null,
-      source: input.source,
-      aspectRatio: input.aspectRatio,
+      await this.storage.saveReferences(safeProjectId, updatedList);
+      return result;
     });
-
-    // Put newest references first
-    await this.storage.saveReferences(safeProjectId, [ref, ...existing]);
-    return ref;
   }
 
   async list(projectId?: string | null, filter?: ReferenceFilter): Promise<Reference[]> {
@@ -181,21 +148,25 @@ export class ReferenceService {
 
   async remove(projectId: string, id: string): Promise<boolean> {
     const canonicalId = await this.resolveProjectId(projectId);
-    const refs = await this.storage.getReferences(canonicalId);
-    const filtered = refs.filter((ref) => ref.id !== id);
-    if (filtered.length === refs.length) return false;
-    await this.storage.saveReferences(canonicalId, filtered);
-    return true;
+    return this.projectMutex.runExclusive(canonicalId, async () => {
+      const refs = await this.storage.getReferences(canonicalId);
+      const filtered = refs.filter((ref) => ref.id !== id);
+      if (filtered.length === refs.length) return false;
+      await this.storage.saveReferences(canonicalId, filtered);
+      return true;
+    });
   }
 
   private async togglePinInList(projectId: string, id: string): Promise<Reference | null> {
-    const list = await this.storage.getReferences(projectId);
-    const index = list.findIndex((r) => r.id === id);
-    if (index === -1) return null;
-    const updated = { ...list[index]!, pinned: !list[index]!.pinned };
-    list[index] = updated;
-    await this.storage.saveReferences(projectId, list);
-    return updated;
+    return this.projectMutex.runExclusive(projectId, async () => {
+      const list = await this.storage.getReferences(projectId);
+      const index = list.findIndex((r) => r.id === id);
+      if (index === -1) return null;
+      const updated = { ...list[index]!, pinned: !list[index]!.pinned };
+      list[index] = updated;
+      await this.storage.saveReferences(projectId, list);
+      return updated;
+    });
   }
 
   async togglePin(
@@ -221,19 +192,21 @@ export class ReferenceService {
     patch: Partial<Omit<Reference, "id" | "projectId" | "addedAt">>
   ): Promise<Reference | null> {
     const canonicalId = await this.resolveProjectId(projectId);
-    const refs = await this.storage.getReferences(canonicalId);
-    const index = refs.findIndex((ref) => ref.id === id);
-    if (index === -1) return null;
+    return this.projectMutex.runExclusive(canonicalId, async () => {
+      const refs = await this.storage.getReferences(canonicalId);
+      const index = refs.findIndex((ref) => ref.id === id);
+      if (index === -1) return null;
 
-    const current = refs[index]!;
-    const projectName = this.projectResolver
-      ? await this.projectResolver.getProjectName(canonicalId)
-      : current.projectName || canonicalId;
+      const current = refs[index]!;
+      const projectName = this.projectResolver
+        ? await this.projectResolver.getProjectName(canonicalId)
+        : current.projectName || canonicalId;
 
-    const updated = mergeReferenceUpdates(current, { ...patch, projectName });
-    refs[index] = updated;
-    await this.storage.saveReferences(canonicalId, refs);
-    return updated;
+      const updated = mergeReferenceUpdates(current, { ...patch, projectName });
+      refs[index] = updated;
+      await this.storage.saveReferences(canonicalId, refs);
+      return updated;
+    });
   }
 
   async listTags(projectId?: string | null): Promise<TagInfo[]> {

@@ -99,7 +99,7 @@ export function InlineReferencesGalleryDirective({ attributes }: PluginMessageDi
             <div
               key={ref.id}
               onClick={() => setSelectedReference(ref)}
-              className="group relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted/40 transition-transform hover:scale-105 hover:border-primary/50"
+              className="group relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-border bg-muted/40 transition-transform hover:scale-105"
               title={`${ref.title} (click to view)`}
             >
               <img
@@ -107,6 +107,7 @@ export function InlineReferencesGalleryDirective({ attributes }: PluginMessageDi
                 alt={ref.title}
                 className="h-full w-full object-cover"
                 loading="lazy"
+                decoding="async"
               />
               <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
                 <Icon name="Maximize2" className="size-3 text-white" />

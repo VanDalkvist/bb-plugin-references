@@ -67,11 +67,11 @@ export function AddReferenceModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+      className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 p-3 animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-xl border border-border bg-card p-5 shadow-xl animate-in zoom-in-95 duration-150"
+        className="w-full max-w-md rounded-xl border border-border bg-card p-4 shadow-xl animate-in zoom-in-95 duration-150 overflow-y-auto max-h-[90%]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border pb-3">

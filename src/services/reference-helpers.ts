@@ -189,3 +189,60 @@ export function resolveAddFields(
 
   return { kind, title, previewUrl, faviconUrl, domain, tags, prompt, pinned, notes };
 }
+
+export function applyReferenceUpsert(
+  existing: Reference[],
+  fields: ReturnType<typeof resolveAddFields>,
+  params: {
+    projectId: string;
+    projectName?: string;
+    urlOrPath: string;
+    source?: string | null;
+    aspectRatio?: number | null;
+    customTitle?: string | null;
+    pinnedInput?: boolean | null;
+  }
+): { updatedList: Reference[]; result: Reference } {
+  const norm = params.urlOrPath.trim().toLowerCase();
+  const idx = existing.findIndex((r) => r.urlOrPath.trim().toLowerCase() === norm);
+
+  if (idx !== -1) {
+    const current = existing[idx]!;
+    const updated = mergeReferenceUpdates(current, {
+      kind: fields.kind,
+      title: params.customTitle?.trim() || current.title || fields.title,
+      tags: fields.tags.length > 0 ? fields.tags : current.tags,
+      notes: fields.notes ?? current.notes,
+      prompt: fields.prompt ?? current.prompt ?? null,
+      pinned: params.pinnedInput !== undefined && params.pinnedInput !== null ? params.pinnedInput : current.pinned,
+      previewUrl: fields.previewUrl ?? current.previewUrl,
+      faviconUrl: fields.faviconUrl ?? current.faviconUrl,
+      domain: fields.domain ?? current.domain ?? null,
+      source: params.source?.trim() || current.source,
+      aspectRatio: params.aspectRatio !== undefined ? params.aspectRatio : current.aspectRatio,
+      projectName: params.projectName,
+    });
+    existing[idx] = updated;
+    return { updatedList: existing, result: updated };
+  }
+
+  const ref = createReferenceRecord({
+    projectId: params.projectId,
+    projectName: params.projectName,
+    kind: fields.kind,
+    urlOrPath: params.urlOrPath,
+    title: fields.title,
+    tags: fields.tags,
+    notes: fields.notes,
+    prompt: fields.prompt,
+    pinned: fields.pinned,
+    previewUrl: fields.previewUrl,
+    faviconUrl: fields.faviconUrl,
+    domain: fields.domain ?? null,
+    source: params.source,
+    aspectRatio: params.aspectRatio,
+  });
+  return { updatedList: [ref, ...existing], result: ref };
+}
+
+

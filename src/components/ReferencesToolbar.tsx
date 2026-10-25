@@ -59,7 +59,7 @@ export function ReferencesToolbar({
   setSelectedTag,
 }: ReferencesToolbarProps) {
   return (
-    <div className="flex flex-col gap-2.5 border-b border-border/70 bg-card/60 p-3 backdrop-blur-sm">
+    <div className="flex flex-col gap-2.5 border-b border-border bg-card p-3">
       {/* Navigation Breadcrumb & Actions */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 overflow-hidden text-xs">
@@ -146,9 +146,10 @@ export function ReferencesToolbar({
             variant="outline"
             className="h-7 gap-1 text-xs px-2"
             onClick={onOpenAddModal}
-            title="Open full add form"
+            title="Add reference"
           >
-            <Icon name="Settings2" className="size-3.5" />
+            <Icon name="Plus" className="size-3.5" />
+            <span className="hidden sm:inline">Add</span>
           </Button>
         </div>
       </div>
